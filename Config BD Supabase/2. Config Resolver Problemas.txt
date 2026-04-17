@@ -1,0 +1,65 @@
+-- permitir ao sistema do supabase criar profiles
+drop policy if exists "profiles_insert_from_auth_admin" on public.profiles;
+
+create policy "profiles_insert_from_auth_admin"
+on public.profiles
+for insert
+to public
+with check (true);
+
+
+-- 1) remover trigger antiga
+drop trigger if exists on_auth_user_created on auth.users;
+
+-- 2) remover função antiga
+drop function if exists public.handle_new_user();
+
+-- 3) recriar função como SECURITY DEFINER
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id)
+  values (new.id)
+  on conflict (id) do nothing;
+
+  return new;
+end;
+$$;
+
+-- 4) garantir que o owner é o postgres
+alter function public.handle_new_user() owner to postgres;
+
+-- 5) recriar trigger
+create trigger on_auth_user_created
+after insert on auth.users
+for each row
+execute function public.handle_new_user();
+
+-- 6) garantir permissões mínimas
+grant usage on schema public to postgres, authenticated, anon, service_role, supabase_auth_admin;
+grant insert, select, update on public.profiles to postgres, service_role, supabase_auth_admin;
+grant execute on function public.handle_new_user() to postgres, service_role, supabase_auth_admin;
+
+-- 7) deixa RLS desligado só para este teste
+alter table public.profiles disable row level security;
+
+
+drop policy if exists "profiles_select_authenticated" on public.profiles;
+drop policy if exists "profiles_update_own" on public.profiles;
+
+create policy "profiles_select_authenticated"
+on public.profiles
+for select
+to authenticated
+using (true);
+
+create policy "profiles_update_own"
+on public.profiles
+for update
+to authenticated
+using (auth.uid() = id)
+with check (auth.uid() = id);

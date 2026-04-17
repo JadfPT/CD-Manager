@@ -1,0 +1,375 @@
+begin;
+
+-- ============================================================================
+-- 1) TABELAS
+-- ============================================================================
+
+create table if not exists public.artists (
+  id bigint primary key,
+  name text not null,
+  genre_text text,
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+create table if not exists public.albums (
+  id bigint primary key,
+  title text not null,
+  artist_id bigint not null references public.artists(id) on delete restrict,
+  on_shelf boolean not null default true,
+  cover_url text,
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  username text unique,
+  display_name text,
+  is_admin boolean not null default false,
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+create table if not exists public.user_favorite_albums (
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  album_id bigint not null references public.albums(id) on delete cascade,
+  created_at timestamptz not null default timezone('utc', now()),
+  primary key (user_id, album_id)
+);
+
+create table if not exists public.user_album_notes (
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  album_id bigint not null references public.albums(id) on delete cascade,
+  note text not null,
+  updated_at timestamptz not null default timezone('utc', now()),
+  primary key (user_id, album_id)
+);
+
+create table if not exists public.album_loans (
+  id bigint generated always as identity primary key,
+  album_id bigint not null references public.albums(id) on delete cascade,
+  borrowed_by_user_id uuid not null references public.profiles(id) on delete restrict,
+  borrowed_at timestamptz not null default timezone('utc', now()),
+  returned_at timestamptz,
+  constraint album_loans_returned_after_borrowed_chk
+    check (returned_at is null or returned_at >= borrowed_at)
+);
+
+-- Apenas um empréstimo ativo por álbum
+create unique index if not exists album_loans_one_active_per_album_idx
+  on public.album_loans (album_id)
+  where returned_at is null;
+
+-- Índices úteis
+create index if not exists albums_artist_id_idx
+  on public.albums (artist_id);
+
+create index if not exists albums_on_shelf_id_idx
+  on public.albums (on_shelf, id);
+
+create index if not exists artists_name_idx
+  on public.artists (name);
+
+create index if not exists profiles_username_idx
+  on public.profiles (username);
+
+create index if not exists album_loans_active_lookup_idx
+  on public.album_loans (album_id, returned_at);
+
+create index if not exists album_loans_borrowed_by_user_idx
+  on public.album_loans (borrowed_by_user_id, returned_at);
+
+-- ============================================================================
+-- 2) FUNÇÕES AUXILIARES
+-- ============================================================================
+
+-- Saber se o utilizador autenticado é admin
+create or replace function public.current_user_is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce(
+    (select p.is_admin from public.profiles p where p.id = auth.uid()),
+    false
+  );
+$$;
+
+-- Atualizar updated_at das notas
+create or replace function public.set_user_album_notes_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = timezone('utc', now());
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_set_user_album_notes_updated_at on public.user_album_notes;
+
+create trigger trg_set_user_album_notes_updated_at
+before update on public.user_album_notes
+for each row
+execute function public.set_user_album_notes_updated_at();
+
+-- Criar profile automaticamente quando nasce um auth user
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id)
+  values (new.id)
+  on conflict (id) do nothing;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+
+create trigger on_auth_user_created
+after insert on auth.users
+for each row
+execute function public.handle_new_user();
+
+-- ============================================================================
+-- 3) RPCs PARA REQUISIÇÃO / DEVOLUÇÃO
+-- ============================================================================
+
+create or replace function public.borrow_album(p_album_id bigint)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid;
+  v_on_shelf boolean;
+begin
+  v_user_id := auth.uid();
+
+  if v_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  select a.on_shelf
+    into v_on_shelf
+  from public.albums a
+  where a.id = p_album_id
+  for update;
+
+  if not found then
+    raise exception 'Album not found';
+  end if;
+
+  if v_on_shelf = false then
+    raise exception 'Album is already marked as not on shelf';
+  end if;
+
+  insert into public.album_loans (album_id, borrowed_by_user_id)
+  values (p_album_id, v_user_id);
+
+  update public.albums
+  set on_shelf = false
+  where id = p_album_id;
+end;
+$$;
+
+create or replace function public.return_album(p_album_id bigint)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid;
+  v_is_admin boolean;
+  v_loan_id bigint;
+  v_borrowed_by uuid;
+begin
+  v_user_id := auth.uid();
+
+  if v_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  v_is_admin := public.current_user_is_admin();
+
+  select l.id, l.borrowed_by_user_id
+    into v_loan_id, v_borrowed_by
+  from public.album_loans l
+  where l.album_id = p_album_id
+    and l.returned_at is null
+  for update;
+
+  if not found then
+    raise exception 'No active loan for this album';
+  end if;
+
+  if v_borrowed_by <> v_user_id and not v_is_admin then
+    raise exception 'Only the borrower or an admin can return this album';
+  end if;
+
+  update public.album_loans
+  set returned_at = timezone('utc', now())
+  where id = v_loan_id;
+
+  update public.albums
+  set on_shelf = true
+  where id = p_album_id;
+end;
+$$;
+
+-- ============================================================================
+-- 4) RLS
+-- ============================================================================
+
+alter table public.artists enable row level security;
+alter table public.albums enable row level security;
+alter table public.profiles enable row level security;
+alter table public.user_favorite_albums enable row level security;
+alter table public.user_album_notes enable row level security;
+alter table public.album_loans enable row level security;
+
+-- Limpeza defensiva caso corras o script mais de uma vez
+drop policy if exists "artists_select_authenticated" on public.artists;
+drop policy if exists "albums_select_authenticated" on public.albums;
+drop policy if exists "profiles_select_authenticated" on public.profiles;
+drop policy if exists "profiles_update_own" on public.profiles;
+drop policy if exists "profiles_insert_from_auth_admin" on public.profiles;
+drop policy if exists "favorites_select_own" on public.user_favorite_albums;
+drop policy if exists "favorites_insert_own" on public.user_favorite_albums;
+drop policy if exists "favorites_delete_own" on public.user_favorite_albums;
+drop policy if exists "notes_select_own" on public.user_album_notes;
+drop policy if exists "notes_insert_own" on public.user_album_notes;
+drop policy if exists "notes_update_own" on public.user_album_notes;
+drop policy if exists "notes_delete_own" on public.user_album_notes;
+drop policy if exists "loans_select_authenticated" on public.album_loans;
+
+-- artists: leitura para utilizadores autenticados
+create policy "artists_select_authenticated"
+on public.artists
+for select
+to authenticated
+using (true);
+
+-- albums: leitura para utilizadores autenticados
+create policy "albums_select_authenticated"
+on public.albums
+for select
+to authenticated
+using (true);
+
+-- profiles: leitura para utilizadores autenticados
+create policy "profiles_select_authenticated"
+on public.profiles
+for select
+to authenticated
+using (true);
+
+-- profiles: cada user só edita o próprio perfil
+create policy "profiles_update_own"
+on public.profiles
+for update
+to authenticated
+using (auth.uid() = id)
+with check (auth.uid() = id);
+
+-- profiles: permitir ao trigger do auth criar o profile
+create policy "profiles_insert_from_auth_admin"
+on public.profiles
+for insert
+to supabase_auth_admin
+with check (true);
+
+-- favorites: cada user só vê os seus
+create policy "favorites_select_own"
+on public.user_favorite_albums
+for select
+to authenticated
+using (auth.uid() = user_id);
+
+create policy "favorites_insert_own"
+on public.user_favorite_albums
+for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+create policy "favorites_delete_own"
+on public.user_favorite_albums
+for delete
+to authenticated
+using (auth.uid() = user_id);
+
+-- notes: cada user só vê/edita as suas
+create policy "notes_select_own"
+on public.user_album_notes
+for select
+to authenticated
+using (auth.uid() = user_id);
+
+create policy "notes_insert_own"
+on public.user_album_notes
+for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+create policy "notes_update_own"
+on public.user_album_notes
+for update
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+create policy "notes_delete_own"
+on public.user_album_notes
+for delete
+to authenticated
+using (auth.uid() = user_id);
+
+-- loans: leitura para utilizadores autenticados
+create policy "loans_select_authenticated"
+on public.album_loans
+for select
+to authenticated
+using (true);
+
+-- permitir ao sistema do supabase criar profiles
+drop policy if exists "profiles_insert_from_auth_admin" on public.profiles;
+
+create policy "profiles_insert_from_auth_admin"
+on public.profiles
+for insert
+to public
+with check (true);
+
+-- ============================================================================
+-- 5) GRANTS
+-- ============================================================================
+
+grant usage on schema public to authenticated;
+grant usage on schema public to supabase_auth_admin;
+
+grant select on public.artists to authenticated;
+grant select on public.albums to authenticated;
+grant select on public.profiles to authenticated;
+grant select on public.album_loans to authenticated;
+
+grant select, insert, delete on public.user_favorite_albums to authenticated;
+grant select, insert, update, delete on public.user_album_notes to authenticated;
+
+-- Profiles: só permitir mudar username/display_name no cliente
+grant update (username, display_name) on public.profiles to authenticated;
+
+grant execute on function public.current_user_is_admin() to authenticated;
+grant execute on function public.borrow_album(bigint) to authenticated;
+grant execute on function public.return_album(bigint) to authenticated;
+
+-- Permissões para o trigger do auth
+grant insert on public.profiles to supabase_auth_admin;
+grant execute on function public.handle_new_user() to supabase_auth_admin;
+
+commit;

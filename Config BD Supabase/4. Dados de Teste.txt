@@ -1,0 +1,7 @@
+insert into public.artists (id, name, genre_text)
+values (1, 'Teste Artist', 'Rock')
+on conflict (id) do nothing;
+
+insert into public.albums (id, title, artist_id, on_shelf)
+values (1, 'Teste Album', 1, true)
+on conflict (id) do nothing;
