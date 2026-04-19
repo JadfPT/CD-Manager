@@ -17,6 +17,10 @@ import '../features/random/presentation/pages/random_page.dart';
 import '../features/admin/presentation/pages/admin_item_form_page.dart';
 import '../features/admin/presentation/pages/admin_artist_form_page.dart';
 import '../features/admin/presentation/pages/wishlist_admin_page.dart';
+import '../features/collections/presentation/pages/collections_page.dart';
+import '../features/collections/presentation/pages/collection_detail_page.dart';
+import '../features/collections/presentation/pages/collection_form_page.dart';
+import '../features/collections/presentation/pages/add_item_to_collection_page.dart';
 import '../shared/models/item_type.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
@@ -141,6 +145,50 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/admin/wishlist',
             builder: (context, state) => const WishlistAdminPage(),
+          ),
+          GoRoute(
+            path: '/collections',
+            builder: (context, state) => const CollectionsPage(),
+          ),
+          GoRoute(
+            path: '/collections/new',
+            builder: (context, state) => const CollectionFormPage.create(),
+          ),
+          GoRoute(
+            path: '/collections/:collectionId',
+            builder: (context, state) {
+              final collectionId = int.tryParse(state.pathParameters['collectionId'] ?? '');
+              if (collectionId == null) {
+                return const Scaffold(
+                  body: Center(child: Text('ID de coleção inválido')),
+                );
+              }
+              return CollectionDetailPage(collectionId: collectionId);
+            },
+          ),
+          GoRoute(
+            path: '/collections/:collectionId/edit',
+            builder: (context, state) {
+              final collectionId = int.tryParse(state.pathParameters['collectionId'] ?? '');
+              if (collectionId == null) {
+                return const Scaffold(
+                  body: Center(child: Text('ID de coleção inválido')),
+                );
+              }
+              return CollectionFormPage.edit(collectionId: collectionId);
+            },
+          ),
+          GoRoute(
+            path: '/collections/:collectionId/add-item',
+            builder: (context, state) {
+              final collectionId = int.tryParse(state.pathParameters['collectionId'] ?? '');
+              if (collectionId == null) {
+                return const Scaffold(
+                  body: Center(child: Text('ID de coleção inválido')),
+                );
+              }
+              return AddItemToCollectionPage(collectionId: collectionId);
+            },
           ),
           GoRoute(
             path: '/admin/items/:itemType/:itemId/edit',

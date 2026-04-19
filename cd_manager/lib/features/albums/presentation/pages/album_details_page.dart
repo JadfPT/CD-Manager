@@ -6,6 +6,7 @@ import '../../../../shared/models/album_loan.dart';
 import '../../../../shared/models/item_type.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_error_state.dart';
+import '../../../collections/presentation/widgets/item_collections_widget.dart';
 import '../../../favorites/application/favorite_providers.dart';
 import '../../../favorites/application/favorite_toggle_controller.dart';
 import '../../../loans/application/loan_action_controller.dart';
@@ -228,6 +229,11 @@ class AlbumDetailsPage extends ConsumerWidget {
                   },
                 ),
                 const SizedBox(height: 12),
+                ItemCollectionsWidget(
+                  itemId: albumId,
+                  itemType: itemType,
+                ),
+                const SizedBox(height: 4),
                 NoteEditorCard(
                   initialNote: currentNote,
                   isBusy: noteActionState.isLoading,
