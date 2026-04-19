@@ -1,0 +1,181 @@
+-- limpar policies se já existirem
+drop policy if exists "cd_albums_select_authenticated" on public.cd_albums;
+drop policy if exists "cd_albums_insert_admin" on public.cd_albums;
+drop policy if exists "cd_albums_update_admin" on public.cd_albums;
+
+drop policy if exists "vinyl_albums_select_authenticated" on public.vinyl_albums;
+drop policy if exists "vinyl_albums_insert_admin" on public.vinyl_albums;
+drop policy if exists "vinyl_albums_update_admin" on public.vinyl_albums;
+
+drop policy if exists "favorite_items_select_own" on public.user_favorite_items;
+drop policy if exists "favorite_items_insert_own" on public.user_favorite_items;
+drop policy if exists "favorite_items_delete_own" on public.user_favorite_items;
+
+drop policy if exists "favorite_artists_select_own" on public.user_favorite_artists;
+drop policy if exists "favorite_artists_insert_own" on public.user_favorite_artists;
+drop policy if exists "favorite_artists_delete_own" on public.user_favorite_artists;
+
+drop policy if exists "item_notes_select_own" on public.user_item_notes;
+drop policy if exists "item_notes_insert_own" on public.user_item_notes;
+drop policy if exists "item_notes_update_own" on public.user_item_notes;
+drop policy if exists "item_notes_delete_own" on public.user_item_notes;
+
+drop policy if exists "item_loans_select_authenticated" on public.item_loans;
+
+drop policy if exists "wishlist_items_select_own" on public.user_wishlist_items;
+drop policy if exists "wishlist_items_insert_own" on public.user_wishlist_items;
+drop policy if exists "wishlist_items_delete_own" on public.user_wishlist_items;
+
+drop policy if exists "user_settings_select_own" on public.user_settings;
+drop policy if exists "user_settings_insert_own" on public.user_settings;
+drop policy if exists "user_settings_update_own" on public.user_settings;
+
+-- cd_albums
+create policy "cd_albums_select_authenticated"
+on public.cd_albums
+for select
+to authenticated
+using (not is_archived);
+
+create policy "cd_albums_insert_admin"
+on public.cd_albums
+for insert
+to authenticated
+with check (public.current_user_is_admin());
+
+create policy "cd_albums_update_admin"
+on public.cd_albums
+for update
+to authenticated
+using (public.current_user_is_admin())
+with check (public.current_user_is_admin());
+
+-- vinyl_albums
+create policy "vinyl_albums_select_authenticated"
+on public.vinyl_albums
+for select
+to authenticated
+using (not is_archived);
+
+create policy "vinyl_albums_insert_admin"
+on public.vinyl_albums
+for insert
+to authenticated
+with check (public.current_user_is_admin());
+
+create policy "vinyl_albums_update_admin"
+on public.vinyl_albums
+for update
+to authenticated
+using (public.current_user_is_admin())
+with check (public.current_user_is_admin());
+
+-- favoritos de itens
+create policy "favorite_items_select_own"
+on public.user_favorite_items
+for select
+to authenticated
+using (auth.uid() = user_id);
+
+create policy "favorite_items_insert_own"
+on public.user_favorite_items
+for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+create policy "favorite_items_delete_own"
+on public.user_favorite_items
+for delete
+to authenticated
+using (auth.uid() = user_id);
+
+-- favoritos de artistas
+create policy "favorite_artists_select_own"
+on public.user_favorite_artists
+for select
+to authenticated
+using (auth.uid() = user_id);
+
+create policy "favorite_artists_insert_own"
+on public.user_favorite_artists
+for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+create policy "favorite_artists_delete_own"
+on public.user_favorite_artists
+for delete
+to authenticated
+using (auth.uid() = user_id);
+
+-- notas por item
+create policy "item_notes_select_own"
+on public.user_item_notes
+for select
+to authenticated
+using (auth.uid() = user_id);
+
+create policy "item_notes_insert_own"
+on public.user_item_notes
+for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+create policy "item_notes_update_own"
+on public.user_item_notes
+for update
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+create policy "item_notes_delete_own"
+on public.user_item_notes
+for delete
+to authenticated
+using (auth.uid() = user_id);
+
+-- loans
+create policy "item_loans_select_authenticated"
+on public.item_loans
+for select
+to authenticated
+using (true);
+
+-- wishlist
+create policy "wishlist_items_select_own"
+on public.user_wishlist_items
+for select
+to authenticated
+using (auth.uid() = user_id);
+
+create policy "wishlist_items_insert_own"
+on public.user_wishlist_items
+for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+create policy "wishlist_items_delete_own"
+on public.user_wishlist_items
+for delete
+to authenticated
+using (auth.uid() = user_id);
+
+-- user_settings
+create policy "user_settings_select_own"
+on public.user_settings
+for select
+to authenticated
+using (auth.uid() = user_id);
+
+create policy "user_settings_insert_own"
+on public.user_settings
+for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+create policy "user_settings_update_own"
+on public.user_settings
+for update
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);

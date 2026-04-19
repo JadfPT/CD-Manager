@@ -1,0 +1,128 @@
+drop function if exists public.borrow_item(text, bigint);
+drop function if exists public.return_item(text, bigint);
+
+create or replace function public.borrow_item(
+  p_item_type text,
+  p_item_id bigint
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid;
+  v_on_shelf boolean;
+begin
+  v_user_id := auth.uid();
+
+  if v_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  if p_item_type not in ('cd', 'vinyl') then
+    raise exception 'Invalid item_type';
+  end if;
+
+  if p_item_type = 'cd' then
+    select a.on_shelf
+      into v_on_shelf
+    from public.cd_albums a
+    where a.id = p_item_id
+    for update;
+
+    if not found then
+      raise exception 'CD not found';
+    end if;
+  else
+    select v.on_shelf
+      into v_on_shelf
+    from public.vinyl_albums v
+    where v.id = p_item_id
+    for update;
+
+    if not found then
+      raise exception 'Vinyl not found';
+    end if;
+  end if;
+
+  if v_on_shelf is false then
+    raise exception 'Item is already marked as not on shelf';
+  end if;
+
+  insert into public.item_loans (item_type, item_id, borrowed_by_user_id)
+  values (p_item_type, p_item_id, v_user_id);
+
+  if p_item_type = 'cd' then
+    update public.cd_albums
+    set on_shelf = false
+    where id = p_item_id;
+  else
+    update public.vinyl_albums
+    set on_shelf = false
+    where id = p_item_id;
+  end if;
+end;
+$$;
+
+create or replace function public.return_item(
+  p_item_type text,
+  p_item_id bigint
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid;
+  v_is_admin boolean;
+  v_loan_id bigint;
+  v_borrowed_by uuid;
+begin
+  v_user_id := auth.uid();
+
+  if v_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  if p_item_type not in ('cd', 'vinyl') then
+    raise exception 'Invalid item_type';
+  end if;
+
+  v_is_admin := public.current_user_is_admin();
+
+  select l.id, l.borrowed_by_user_id
+    into v_loan_id, v_borrowed_by
+  from public.item_loans l
+  where l.item_type = p_item_type
+    and l.item_id = p_item_id
+    and l.returned_at is null
+  for update;
+
+  if not found then
+    raise exception 'No active loan for this item';
+  end if;
+
+  if v_borrowed_by <> v_user_id and not v_is_admin then
+    raise exception 'Only the borrower or an admin can return this item';
+  end if;
+
+  update public.item_loans
+  set returned_at = timezone('utc', now())
+  where id = v_loan_id;
+
+  if p_item_type = 'cd' then
+    update public.cd_albums
+    set on_shelf = true
+    where id = p_item_id;
+  else
+    update public.vinyl_albums
+    set on_shelf = true
+    where id = p_item_id;
+  end if;
+end;
+$$;
+
+grant execute on function public.borrow_item(text, bigint) to authenticated;
+grant execute on function public.return_item(text, bigint) to authenticated;

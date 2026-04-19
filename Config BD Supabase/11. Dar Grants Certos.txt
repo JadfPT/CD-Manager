@@ -1,0 +1,16 @@
+grant select on public.cd_albums to authenticated;
+grant insert, update on public.cd_albums to authenticated;
+
+grant select on public.vinyl_albums to authenticated;
+grant insert, update on public.vinyl_albums to authenticated;
+
+grant select, insert, delete on public.user_favorite_items to authenticated;
+grant select, insert, delete on public.user_favorite_artists to authenticated;
+grant select, insert, update, delete on public.user_item_notes to authenticated;
+grant select on public.item_loans to authenticated;
+grant select, insert, delete on public.user_wishlist_items to authenticated;
+grant select, insert, update on public.user_settings to authenticated;
+
+grant execute on function public.borrow_item(text, bigint) to authenticated;
+grant execute on function public.return_item(text, bigint) to authenticated;
+grant execute on function public.current_user_is_admin() to authenticated;

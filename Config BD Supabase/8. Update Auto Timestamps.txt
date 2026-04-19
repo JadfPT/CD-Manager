@@ -1,0 +1,33 @@
+create or replace function public.set_user_item_notes_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = timezone('utc', now());
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_set_user_item_notes_updated_at on public.user_item_notes;
+
+create trigger trg_set_user_item_notes_updated_at
+before update on public.user_item_notes
+for each row
+execute function public.set_user_item_notes_updated_at();
+
+create or replace function public.set_user_settings_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = timezone('utc', now());
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_set_user_settings_updated_at on public.user_settings;
+
+create trigger trg_set_user_settings_updated_at
+before update on public.user_settings
+for each row
+execute function public.set_user_settings_updated_at();
