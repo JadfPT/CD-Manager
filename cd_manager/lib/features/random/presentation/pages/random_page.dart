@@ -7,6 +7,7 @@ import '../../../../features/artists/application/artist_providers.dart';
 import '../../../../features/favorites/application/favorite_providers.dart';
 import '../../../../shared/models/album_list_item.dart';
 import '../../../../shared/models/artist.dart';
+import '../../../../shared/models/item_type.dart';
 
 enum RandomTypeFilter { all, cd, vinyl, artist }
 
@@ -21,6 +22,8 @@ class _RandomPageState extends ConsumerState<RandomPage> {
   final _rng = Random();
   RandomTypeFilter _typeFilter = RandomTypeFilter.all;
   bool _favoritesOnly = false;
+  bool _isRolling = false;
+  int _resultVersion = 0;
 
   AlbumListItem? _pickedItem;
   Artist? _pickedArtist;
@@ -28,6 +31,18 @@ class _RandomPageState extends ConsumerState<RandomPage> {
 
   @override
   Widget build(BuildContext context) {
+    final itemsAsync = _favoritesOnly
+        ? ref.watch(favoriteItemsProvider)
+        : ref.watch(albumListItemsProvider(const AlbumFilters()));
+    final artistsAsync = _favoritesOnly
+        ? ref.watch(favoriteArtistsProvider)
+        : ref.watch(artistsProvider);
+
+    final possibleCount = _possibleResultsCount(
+      items: itemsAsync.valueOrNull ?? const <AlbumListItem>[],
+      artists: artistsAsync.valueOrNull ?? const <Artist>[],
+    );
+
     return Scaffold(
       appBar: AppBar(title: const Text('Random 🎲')),
       body: ListView(
@@ -72,14 +87,42 @@ class _RandomPageState extends ConsumerState<RandomPage> {
                     },
                   ),
                   const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .surfaceContainerHighest
+                          .withValues(alpha: 0.55),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      possibleCount == 1
+                          ? '1 resultado possível com os filtros atuais'
+                          : '$possibleCount resultados possíveis com os filtros atuais',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed: () async {
-                        await _drawRandom(ref);
-                      },
-                      icon: const Icon(Icons.casino_outlined),
-                      label: const Text('Sortear'),
+                      onPressed: _isRolling || possibleCount == 0
+                          ? null
+                          : () async {
+                              await _drawRandom(ref);
+                            },
+                      icon: _isRolling
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.casino_outlined),
+                      label: Text(_isRolling ? 'A sortear...' : 'Sortear'),
                     ),
                   ),
                 ],
@@ -91,86 +134,80 @@ class _RandomPageState extends ConsumerState<RandomPage> {
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Text(
-                  _statusText!,
-                  style: Theme.of(context).textTheme.bodyMedium,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 320),
+                  transitionBuilder: (child, animation) {
+                    return FadeTransition(
+                      opacity: animation,
+                      child: ScaleTransition(scale: animation, child: child),
+                    );
+                  },
+                  child: Text(
+                    _statusText!,
+                    key: ValueKey(_resultVersion),
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
                 ),
               ),
             ),
           if (_pickedItem != null)
-            Card(
-              child: ListTile(
-                leading: Icon(
-                  _pickedItem!.itemType.value == 'cd'
-                      ? Icons.album_outlined
-                      : Icons.album,
-                ),
-                title: Text(_pickedItem!.title),
-                subtitle: Text('${_pickedItem!.artistName} • ${_pickedItem!.itemType.value.toUpperCase()}'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => context.push(
-                  '/albums/${_pickedItem!.albumId}',
-                  extra: _pickedItem!.itemType,
-                ),
-              ),
+            const SizedBox(height: 24),
+          if (_pickedItem != null)
+            _SpotifyLikeAlbumResult(
+              key: ValueKey('item-${_pickedItem!.albumId}-$_resultVersion'),
+              item: _pickedItem!,
             ),
           if (_pickedArtist != null)
-            Card(
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundImage: _pickedArtist!.imageUrl == null ||
-                          _pickedArtist!.imageUrl!.trim().isEmpty
-                      ? null
-                      : NetworkImage(_pickedArtist!.imageUrl!.trim()),
-                  child: _pickedArtist!.imageUrl == null ||
-                          _pickedArtist!.imageUrl!.trim().isEmpty
-                      ? Text(
-                          _pickedArtist!.name.isNotEmpty
-                              ? _pickedArtist!.name[0].toUpperCase()
-                              : '?',
-                        )
-                      : null,
-                ),
-                title: Text(_pickedArtist!.name),
-                subtitle: Text(
-                  _pickedArtist!.genreText == null ||
-                          _pickedArtist!.genreText!.trim().isEmpty
-                      ? 'Sem género'
-                      : _pickedArtist!.genreText!,
-                ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => context.push('/artists/${_pickedArtist!.id}'),
-              ),
+            _SpotifyLikeArtistResult(
+              key: ValueKey('artist-${_pickedArtist!.id}-$_resultVersion'),
+              artist: _pickedArtist!,
             ),
         ],
       ),
     );
   }
 
+  int _possibleResultsCount({
+    required List<AlbumListItem> items,
+    required List<Artist> artists,
+  }) {
+    switch (_typeFilter) {
+      case RandomTypeFilter.cd:
+        return items.where((item) => item.itemType == ItemType.cd).length;
+      case RandomTypeFilter.vinyl:
+        return items.where((item) => item.itemType == ItemType.vinyl).length;
+      case RandomTypeFilter.artist:
+        return artists.length;
+      case RandomTypeFilter.all:
+        return items.length + artists.length;
+    }
+  }
+
   Future<void> _drawRandom(WidgetRef ref) async {
     setState(() {
+      _isRolling = true;
       _pickedItem = null;
       _pickedArtist = null;
       _statusText = null;
     });
 
     try {
+      await Future<void>.delayed(const Duration(milliseconds: 450));
+
       final items = _favoritesOnly
           ? await ref.read(favoriteItemsProvider.future)
-          : await ref.read(
-              albumListItemsProvider(
-                const AlbumFilters(),
-              ).future,
-            );
+          : await ref.read(albumListItemsProvider(const AlbumFilters()).future);
       final artists = _favoritesOnly
           ? await ref.read(favoriteArtistsProvider.future)
           : await ref.read(artistsProvider.future);
 
       final filteredItems = switch (_typeFilter) {
         RandomTypeFilter.cd =>
-          items.where((item) => item.itemType.value == 'cd').toList(),
+          items.where((item) => item.itemType == ItemType.cd).toList(),
         RandomTypeFilter.vinyl =>
-          items.where((item) => item.itemType.value == 'vinyl').toList(),
+          items.where((item) => item.itemType == ItemType.vinyl).toList(),
         RandomTypeFilter.artist => <AlbumListItem>[],
         RandomTypeFilter.all => items,
       };
@@ -179,6 +216,7 @@ class _RandomPageState extends ConsumerState<RandomPage> {
         if (artists.isEmpty) {
           setState(() {
             _statusText = 'Sem artistas para sortear com os filtros atuais.';
+            _isRolling = false;
           });
           return;
         }
@@ -187,6 +225,8 @@ class _RandomPageState extends ConsumerState<RandomPage> {
         setState(() {
           _pickedArtist = picked;
           _statusText = 'Saiu artista!';
+          _resultVersion++;
+          _isRolling = false;
         });
         return;
       }
@@ -199,6 +239,7 @@ class _RandomPageState extends ConsumerState<RandomPage> {
         if (choices.isEmpty) {
           setState(() {
             _statusText = 'Nada para sortear com os filtros atuais.';
+            _isRolling = false;
           });
           return;
         }
@@ -209,6 +250,8 @@ class _RandomPageState extends ConsumerState<RandomPage> {
           setState(() {
             _pickedArtist = picked;
             _statusText = 'Saiu artista!';
+            _resultVersion++;
+            _isRolling = false;
           });
           return;
         }
@@ -217,6 +260,7 @@ class _RandomPageState extends ConsumerState<RandomPage> {
       if (filteredItems.isEmpty) {
         setState(() {
           _statusText = 'Sem itens para sortear com os filtros atuais.';
+          _isRolling = false;
         });
         return;
       }
@@ -225,11 +269,173 @@ class _RandomPageState extends ConsumerState<RandomPage> {
       setState(() {
         _pickedItem = picked;
         _statusText = 'Saiu item!';
+        _resultVersion++;
+        _isRolling = false;
       });
     } catch (e) {
       setState(() {
         _statusText = 'Erro ao sortear: $e';
+        _isRolling = false;
       });
     }
+  }
+}
+
+class _SpotifyLikeAlbumResult extends StatelessWidget {
+  const _SpotifyLikeAlbumResult({
+    required this.item,
+    super.key,
+  });
+
+  final AlbumListItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final typeColor = item.itemType == ItemType.cd ? Colors.cyan : Colors.purple;
+    final typeText = item.itemType == ItemType.cd ? 'CD' : 'Vinil';
+
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => context.push(
+          '/albums/${item.albumId}?type=${item.itemType.value}',
+          extra: item.itemType,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: AspectRatio(
+                  aspectRatio: 1,
+                  child: (item.coverUrl != null && item.coverUrl!.trim().isNotEmpty)
+                      ? Image.network(
+                          item.coverUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              _coverFallback(context),
+                        )
+                      : _coverFallback(context),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          item.artistName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w600,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: typeColor.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      typeText,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: typeColor,
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _coverFallback(BuildContext context) {
+    return Container(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: const Center(child: Icon(Icons.album, size: 42)),
+    );
+  }
+}
+
+class _SpotifyLikeArtistResult extends StatelessWidget {
+  const _SpotifyLikeArtistResult({
+    required this.artist,
+    super.key,
+  });
+
+  final Artist artist;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => context.push('/artists/${artist.id}'),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 28,
+                backgroundImage: artist.imageUrl == null || artist.imageUrl!.trim().isEmpty
+                    ? null
+                    : NetworkImage(artist.imageUrl!.trim()),
+                child: artist.imageUrl == null || artist.imageUrl!.trim().isEmpty
+                    ? Text(
+                        artist.name.isNotEmpty ? artist.name[0].toUpperCase() : '?',
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      artist.name,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      artist.genreText == null || artist.genreText!.trim().isEmpty
+                          ? 'Sem género'
+                          : artist.genreText!,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

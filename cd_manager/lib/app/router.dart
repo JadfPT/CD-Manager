@@ -70,11 +70,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                   body: Center(child: Text('ID de álbum inválido')),
                 );
               }
-              
-              // Extract itemType from extra, default to CD
-              final itemType = state.extra is ItemType 
-                  ? state.extra as ItemType 
-                  : ItemType.cd;
+
+              // Prefer query param (?type=cd|vinyl), fallback to extra, then CD
+              final typeFromQuery = (state.uri.queryParameters['type'] ?? '').toLowerCase();
+              final itemType = typeFromQuery == 'vinyl'
+                  ? ItemType.vinyl
+                  : typeFromQuery == 'cd'
+                      ? ItemType.cd
+                      : state.extra is ItemType
+                          ? state.extra as ItemType
+                          : ItemType.cd;
               
               return AlbumDetailsPage(
                 albumId: albumId,

@@ -74,32 +74,36 @@ class _NoteEditorCardState extends State<NoteEditorCard> {
             const SizedBox(height: 12),
             Row(
               children: [
-                FilledButton.icon(
-                  onPressed: widget.isBusy
-                      ? null
-                      : () => widget.onSave(_controller.text.trim()),
-                  icon: widget.isBusy
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.save_outlined),
-                  label: const Text('Guardar'),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: widget.isBusy
+                        ? null
+                        : () => widget.onSave(_controller.text.trim()),
+                    icon: widget.isBusy
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save_outlined),
+                    label: const Text('Guardar'),
+                  ),
                 ),
                 const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  onPressed: widget.isBusy || !hasText
-                      ? null
-                      : () async {
-                          await widget.onDelete();
-                          if (mounted) {
-                            _controller.clear();
-                            setState(() {});
-                          }
-                        },
-                  icon: const Icon(Icons.delete_outline),
-                  label: const Text('Apagar'),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: widget.isBusy || !hasText
+                        ? null
+                        : () async {
+                            await widget.onDelete();
+                            if (mounted) {
+                              _controller.clear();
+                              setState(() {});
+                            }
+                          },
+                    icon: const Icon(Icons.delete_outline),
+                    label: const Text('Apagar'),
+                  ),
                 ),
               ],
             ),

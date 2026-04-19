@@ -30,15 +30,20 @@ class AlbumMetaSection extends StatelessWidget {
             Wrap(
               spacing: 10,
               runSpacing: 10,
-              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                _MetaChip(label: 'ID', value: '#${album.id}'),
-                _MetaChip(label: 'Artista ID', value: '#${album.artistId}'),
+                _InfoBlock(
+                  label: 'ID',
+                  value: '#${album.id}',
+                ),
+                _InfoBlock(
+                  label: 'Artista ID',
+                  value: '#${album.artistId}',
+                ),
                 if (album.formatEdition != null &&
                     album.formatEdition!.trim().isNotEmpty)
-                  _MetaChip(label: 'Formato', value: album.formatEdition!),
+                  _InfoBlock(label: 'Formato', value: album.formatEdition!),
                 if (artist.genreText != null && artist.genreText!.trim().isNotEmpty)
-                  _MetaChip(label: 'Género', value: artist.genreText!),
+                  _InfoBlock(label: 'Género', value: artist.genreText!),
                 ShelfStatusChip(onShelf: album.onShelf),
               ],
             ),
@@ -49,8 +54,8 @@ class AlbumMetaSection extends StatelessWidget {
   }
 }
 
-class _MetaChip extends StatelessWidget {
-  const _MetaChip({
+class _InfoBlock extends StatelessWidget {
+  const _InfoBlock({
     required this.label,
     required this.value,
   });
@@ -63,31 +68,31 @@ class _MetaChip extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: colors.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
       ),
-      child: RichText(
-        text: TextSpan(
-          style: Theme.of(context).textTheme.labelMedium,
-          children: [
-            TextSpan(
-              text: '$label: ',
-              style: TextStyle(
-                color: colors.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            TextSpan(
-              text: value,
-              style: TextStyle(
-                color: colors.onSurface,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: colors.onSurfaceVariant,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: colors.onSurface,
+                  fontWeight: FontWeight.w800,
+                ),
+          ),
+        ],
       ),
     );
   }

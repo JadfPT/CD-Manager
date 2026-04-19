@@ -128,17 +128,12 @@ class AlbumRepository {
     ItemType itemType = ItemType.cd,
   }) async {
     final userId = _requireUserId();
-    final tableName = itemType == ItemType.cd ? 'cd_albums' : 'vinyl_albums';
-    final itemTypeStr = itemType == ItemType.cd ? 'cd' : 'vinyl';
 
     try {
-      final albumRow = await _client
-          .from(tableName)
-          .select(
-            'id, title, artist_id, on_shelf, cover_url, format_edition, created_at',
-          )
-          .eq('id', albumId)
-          .single();
+      final resolvedAlbum = await _fetchAlbumRow(albumId, preferredType: itemType);
+      final albumRow = resolvedAlbum.albumRow;
+      final resolvedItemType = resolvedAlbum.itemType;
+      final itemTypeStr = resolvedItemType == ItemType.cd ? 'cd' : 'vinyl';
 
       final album = Album.fromMap(albumRow);
 
@@ -189,6 +184,7 @@ class AlbumRepository {
       return AlbumDetailsViewData(
         album: album,
         artist: artist,
+        itemType: resolvedItemType,
         isFavorite: favoriteRow != null,
         userNote: noteRow == null ? null : UserAlbumNote.fromMap(noteRow),
         activeLoan: loanRow == null ? null : AlbumLoan.fromMap(loanRow),
@@ -197,6 +193,37 @@ class AlbumRepository {
     } catch (e) {
       throw AppException(message: 'Falha ao obter detalhe do álbum: $e');
     }
+  }
+
+  Future<({Map<String, dynamic> albumRow, ItemType itemType})> _fetchAlbumRow(
+    int albumId, {
+    required ItemType preferredType,
+  }) async {
+    final preferredTable = preferredType == ItemType.cd ? 'cd_albums' : 'vinyl_albums';
+    final fallbackType = preferredType == ItemType.cd ? ItemType.vinyl : ItemType.cd;
+    final fallbackTable = fallbackType == ItemType.cd ? 'cd_albums' : 'vinyl_albums';
+
+    final preferredRow = await _client
+        .from(preferredTable)
+        .select('id, title, artist_id, on_shelf, cover_url, format_edition, created_at')
+        .eq('id', albumId)
+        .maybeSingle();
+
+    if (preferredRow != null) {
+      return (albumRow: preferredRow, itemType: preferredType);
+    }
+
+    final fallbackRow = await _client
+        .from(fallbackTable)
+        .select('id, title, artist_id, on_shelf, cover_url, format_edition, created_at')
+        .eq('id', albumId)
+        .maybeSingle();
+
+    if (fallbackRow != null) {
+      return (albumRow: fallbackRow, itemType: fallbackType);
+    }
+
+    throw AppException(message: 'Falha ao obter detalhe do álbum: item não encontrado');
   }
 
   Future<List<AlbumListItem>> listAllItemsUnified({

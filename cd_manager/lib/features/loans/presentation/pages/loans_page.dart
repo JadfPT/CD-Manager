@@ -58,7 +58,10 @@ class LoansPage extends ConsumerWidget {
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: InkWell(
-                    onTap: () => context.push('/albums/${item.albumId}', extra: item.itemType),
+                    onTap: () => context.push(
+                      '/albums/${item.albumId}?type=${item.itemType.value}',
+                      extra: item.itemType,
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Row(

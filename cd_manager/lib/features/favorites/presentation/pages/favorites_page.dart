@@ -86,7 +86,10 @@ class _FavoriteItemsTab extends ConsumerWidget {
               final item = items[index];
               return AlbumListTile(
                 item: item,
-                onTap: () => context.push('/albums/${item.albumId}', extra: item.itemType),
+                onTap: () => context.push(
+                  '/albums/${item.albumId}?type=${item.itemType.value}',
+                  extra: item.itemType,
+                ),
                 onArtistTap: () => context.push('/artists/${item.artistId}'),
                 trailing: IconButton(
                   tooltip: 'Remover dos favoritos',

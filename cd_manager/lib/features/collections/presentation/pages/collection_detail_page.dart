@@ -136,43 +136,57 @@ class CollectionDetailPage extends ConsumerWidget {
                           padding: const EdgeInsets.all(12),
                           child: Row(
                             children: [
-                              if (entry.itemCoverUrl != null &&
-                                  entry.itemCoverUrl!.trim().isNotEmpty)
-                                Container(
-                                  width: 60,
-                                  height: 60,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: Image.network(
-                                      entry.itemCoverUrl!,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) =>
-                                          Container(
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (entry.itemCoverUrl != null &&
+                                      entry.itemCoverUrl!.trim().isNotEmpty)
+                                    Container(
+                                      width: 60,
+                                      height: 60,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.network(
+                                          entry.itemCoverUrl!,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) =>
+                                              Container(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .surfaceContainerHighest,
+                                            child: const Icon(Icons.album),
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    Container(
+                                      width: 60,
+                                      height: 60,
+                                      decoration: BoxDecoration(
                                         color: Theme.of(context)
                                             .colorScheme
                                             .surfaceContainerHighest,
-                                        child: const Icon(Icons.album),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Center(
+                                        child: Icon(Icons.album),
                                       ),
                                     ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'ID: ${entry.itemId}',
+                                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                        ),
                                   ),
-                                )
-                              else
-                                Container(
-                                  width: 60,
-                                  height: 60,
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .surfaceContainerHighest,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Center(
-                                    child: Icon(Icons.album),
-                                  ),
-                                ),
+                                ],
+                              ),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(

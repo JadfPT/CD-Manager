@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../../shared/widgets/app_empty_state.dart';
+import '../../../../shared/models/album_list_item.dart';
 import '../../../../shared/widgets/app_error_state.dart';
 import '../../../auth/application/auth_providers.dart';
+import '../../../../shared/models/item_type.dart';
 import '../../application/profile_providers.dart';
 import '../../application/profile_update_controller.dart';
 
@@ -35,6 +38,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(currentProfileProvider);
+    final statsAsync = ref.watch(profileLibraryStatsProvider);
+    final recentItemsAsync = ref.watch(recentAddedItemsProvider);
     final updateState = ref.watch(profileUpdateControllerProvider);
     final authState = ref.watch(authProvider);
 
@@ -294,6 +299,30 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 ),
               ),
               const SizedBox(height: 12),
+              statsAsync.when(
+                loading: () => const SizedBox(
+                  height: 96,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                error: (error, _) => AppErrorState(
+                  message: error.toString(),
+                  onRetry: () => ref.invalidate(profileLibraryStatsProvider),
+                ),
+                data: (stats) => _StatsGrid(stats: stats),
+              ),
+              const SizedBox(height: 12),
+              recentItemsAsync.when(
+                loading: () => const SizedBox(
+                  height: 120,
+                  child: Center(child: CircularProgressIndicator()),
+                ),
+                error: (error, _) => AppErrorState(
+                  message: error.toString(),
+                  onRetry: () => ref.invalidate(recentAddedItemsProvider),
+                ),
+                data: (items) => _RecentItemsCard(items: items),
+              ),
+              const SizedBox(height: 12),
               if (profile?.isAdmin ?? false) ...[
                 FilledButton.tonalIcon(
                   onPressed: () => context.push('/admin/wishlist'),
@@ -321,6 +350,133 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _StatsGrid extends StatelessWidget {
+  const _StatsGrid({required this.stats});
+
+  final ProfileLibraryStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: _StatCard(label: 'CDs', value: stats.cdCount.toString(), icon: Icons.album_outlined)),
+        const SizedBox(width: 10),
+        Expanded(child: _StatCard(label: 'Vinis', value: stats.vinylCount.toString(), icon: Icons.album)),
+        const SizedBox(width: 10),
+        Expanded(child: _StatCard(label: 'Favoritos', value: stats.favoriteArtistsCount.toString(), icon: Icons.star_outline)),
+      ],
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          children: [
+            Icon(icon, color: colors.primary),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecentItemsCard extends StatelessWidget {
+  const _RecentItemsCard({required this.items});
+
+  final List<AlbumListItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) {
+      return const AppEmptyState(
+        title: 'Sem itens recentes',
+        subtitle: 'Adiciona CDs ou vinis para ver aqui os últimos registos.',
+        icon: Icons.history,
+      );
+    }
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Últimos adicionados',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 10),
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: items.length,
+              separatorBuilder: (context, index) => const Divider(height: 1),
+              itemBuilder: (context, index) {
+                final item = items[index];
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: item.coverUrl != null && item.coverUrl!.trim().isNotEmpty
+                        ? Image.network(
+                            item.coverUrl!,
+                            width: 44,
+                            height: 44,
+                            fit: BoxFit.cover,
+                          )
+                        : Container(
+                            width: 44,
+                            height: 44,
+                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                            child: const Icon(Icons.album, size: 20),
+                          ),
+                  ),
+                  title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  subtitle: Text(
+                    '${item.artistName} • ${item.itemType == ItemType.cd ? 'CD' : 'Vinil'}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
-class FavoriteButton extends StatelessWidget {
-  const FavoriteButton({
-    required this.isFavorite,
+class WishlistButton extends StatelessWidget {
+  const WishlistButton({
+    required this.isInWishlist,
     required this.isLoading,
     required this.onPressed,
     super.key,
   });
 
-  final bool isFavorite;
+  final bool isInWishlist;
   final bool isLoading;
   final VoidCallback onPressed;
 
@@ -22,8 +22,8 @@ class FavoriteButton extends StatelessWidget {
               height: 16,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
-      label: Text(isFavorite ? 'Favorito' : 'Favoritos'),
+          : Icon(isInWishlist ? Icons.bookmark : Icons.bookmark_outline),
+      label: Text(isInWishlist ? 'Na wishlist' : 'Wishlist'),
     );
   }
 }
