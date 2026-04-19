@@ -74,7 +74,7 @@ class FavoriteRepository {
     if (artistIds.isNotEmpty) {
       final artists = await _client
           .from('artists')
-          .select('id, name, genre_text, created_at')
+          .select('id, name, genre_text, image_url, created_at')
           .inFilter('id', artistIds);
 
       for (final artist in artists) {
@@ -93,6 +93,7 @@ class FavoriteRepository {
         artistId: artistId,
         artistName: (artist['name'] as String?) ?? 'Unknown',
         artistGenreText: artist['genre_text'] as String?,
+        artistImageUrl: artist['image_url'] as String?,
         onShelf: row['on_shelf'] as bool,
         coverUrl: row['cover_url'] as String?,
         createdAt: _asDateTime(row['created_at']),
@@ -136,7 +137,7 @@ class FavoriteRepository {
 
       final artists = await _client
           .from('artists')
-          .select('id, name, genre_text, created_at')
+          .select('id, name, genre_text, image_url, created_at')
           .inFilter('id', artistIds)
           .order('name', ascending: true);
 

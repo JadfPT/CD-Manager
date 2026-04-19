@@ -85,21 +85,53 @@ class ArtistDetailsPage extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      artist.name,
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    if (artist.genreText != null && artist.genreText!.trim().isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
-                        child: Text(
-                          artist.genreText!,
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleSmall
-                              ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 34,
+                          backgroundImage:
+                              artist.imageUrl == null || artist.imageUrl!.trim().isEmpty
+                              ? null
+                              : NetworkImage(artist.imageUrl!.trim()),
+                          child: artist.imageUrl == null || artist.imageUrl!.trim().isEmpty
+                              ? Text(
+                                  artist.name.isNotEmpty
+                                      ? artist.name[0].toUpperCase()
+                                      : '?',
+                                  style: Theme.of(context).textTheme.titleLarge,
+                                )
+                              : null,
                         ),
-                      ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                artist.name,
+                                style: Theme.of(context).textTheme.headlineSmall,
+                              ),
+                              if (artist.genreText != null &&
+                                  artist.genreText!.trim().isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 6),
+                                  child: Text(
+                                    artist.genreText!,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleSmall
+                                        ?.copyWith(
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
+                                        ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 12),
                     Text(
                       'Álbuns',
@@ -123,6 +155,7 @@ class ArtistDetailsPage extends ConsumerWidget {
                           return AlbumListTile(
                             item: item,
                             onTap: () => context.push('/albums/${item.albumId}', extra: item.itemType),
+                            onArtistTap: () => context.push('/artists/${item.artistId}'),
                           );
                         },
                       ),

@@ -15,7 +15,16 @@ class LoansPage extends ConsumerWidget {
     final loansAsync = ref.watch(activeLoanListItemsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Empréstimos')),
+      appBar: AppBar(
+        title: const Text('Empréstimos'),
+        actions: [
+          IconButton(
+            tooltip: 'Random',
+            onPressed: () => context.push('/random'),
+            icon: const Icon(Icons.casino_outlined),
+          ),
+        ],
+      ),
       body: loansAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => AppErrorState(

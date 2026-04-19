@@ -41,7 +41,16 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final email = authState is AuthSuccess ? authState.user.email : null;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Perfil')),
+      appBar: AppBar(
+        title: const Text('Perfil'),
+        actions: [
+          IconButton(
+            tooltip: 'Random',
+            onPressed: () => context.push('/random'),
+            icon: const Icon(Icons.casino_outlined),
+          ),
+        ],
+      ),
       body: profileAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => AppErrorState(

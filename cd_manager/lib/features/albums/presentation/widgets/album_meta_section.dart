@@ -23,7 +23,7 @@ class AlbumMetaSection extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Informação do CD',
+              'Informação do item',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
@@ -34,6 +34,9 @@ class AlbumMetaSection extends StatelessWidget {
               children: [
                 _MetaChip(label: 'ID', value: '#${album.id}'),
                 _MetaChip(label: 'Artista ID', value: '#${album.artistId}'),
+                if (album.formatEdition != null &&
+                    album.formatEdition!.trim().isNotEmpty)
+                  _MetaChip(label: 'Formato', value: album.formatEdition!),
                 if (artist.genreText != null && artist.genreText!.trim().isNotEmpty)
                   _MetaChip(label: 'Género', value: artist.genreText!),
                 ShelfStatusChip(onShelf: album.onShelf),

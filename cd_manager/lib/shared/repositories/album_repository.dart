@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:typed_data';
 import '../../core/config/supabase_config.dart';
 import '../../core/utils/error_handler.dart';
 import '../models/album.dart';
@@ -15,12 +16,27 @@ class AlbumRepository {
 
   final SupabaseClient _client;
 
+  String _tableByType(ItemType itemType) =>
+      itemType == ItemType.cd ? 'cd_albums' : 'vinyl_albums';
+
   String _requireUserId() {
     final id = _client.auth.currentUser?.id;
     if (id == null) {
       throw AppException(message: 'Utilizador não autenticado');
     }
     return id;
+  }
+
+  Future<void> _ensureCurrentUserIsAdmin() async {
+    try {
+      final isAdmin = await _client.rpc('current_user_is_admin');
+      if (isAdmin != true) {
+        throw AppException(message: 'Apenas administradores podem fazer esta ação');
+      }
+    } catch (e) {
+      if (e is AppException) rethrow;
+      throw AppException(message: 'Falha ao validar permissões de admin: $e');
+    }
   }
 
   Future<List<Album>> listAlbums({bool? onShelf}) async {
@@ -65,7 +81,7 @@ class AlbumRepository {
       if (artistIds.isNotEmpty) {
         final artists = await _client
             .from('artists')
-            .select('id, name, genre_text, created_at')
+          .select('id, name, genre_text, image_url, created_at')
             .inFilter('id', artistIds);
 
         for (final artist in artists) {
@@ -83,6 +99,7 @@ class AlbumRepository {
           artistId: artistId,
           artistName: (artist['name'] as String?) ?? 'Unknown',
           artistGenreText: artist['genre_text'] as String?,
+          artistImageUrl: artist['image_url'] as String?,
           onShelf: row['on_shelf'] as bool,
           coverUrl: row['cover_url'] as String?,
           createdAt: _asDateTime(row['created_at']),
@@ -118,7 +135,7 @@ class AlbumRepository {
       final albumRow = await _client
           .from(tableName)
           .select(
-            'id, title, artist_id, on_shelf, cover_url, created_at',
+            'id, title, artist_id, on_shelf, cover_url, format_edition, created_at',
           )
           .eq('id', albumId)
           .single();
@@ -127,7 +144,7 @@ class AlbumRepository {
 
       final artistRow = await _client
           .from('artists')
-          .select('id, name, genre_text, created_at')
+          .select('id, name, genre_text, image_url, created_at')
           .eq('id', _asInt(albumRow['artist_id']))
           .single();
       final artist = Artist.fromMap(artistRow);
@@ -211,7 +228,7 @@ class AlbumRepository {
         if (cdArtistIds.isNotEmpty) {
           final artists = await _client
               .from('artists')
-              .select('id, name, genre_text, created_at')
+              .select('id, name, genre_text, image_url, created_at')
               .inFilter('id', cdArtistIds);
 
           for (final artist in artists) {
@@ -229,6 +246,7 @@ class AlbumRepository {
             artistId: artistId,
             artistName: (artist['name'] as String?) ?? 'Unknown',
             artistGenreText: artist['genre_text'] as String?,
+            artistImageUrl: artist['image_url'] as String?,
             onShelf: row['on_shelf'] as bool,
             coverUrl: row['cover_url'] as String?,
             createdAt: _asDateTime(row['created_at']),
@@ -258,7 +276,7 @@ class AlbumRepository {
         if (vinylArtistIds.isNotEmpty) {
           final artists = await _client
               .from('artists')
-              .select('id, name, genre_text, created_at')
+              .select('id, name, genre_text, image_url, created_at')
               .inFilter('id', vinylArtistIds);
 
           for (final artist in artists) {
@@ -276,6 +294,7 @@ class AlbumRepository {
             artistId: artistId,
             artistName: (artist['name'] as String?) ?? 'Unknown',
             artistGenreText: artist['genre_text'] as String?,
+            artistImageUrl: artist['image_url'] as String?,
             onShelf: row['on_shelf'] as bool,
             coverUrl: row['cover_url'] as String?,
             createdAt: _asDateTime(row['created_at']),
@@ -307,6 +326,111 @@ class AlbumRepository {
       return filteredItems;
     } catch (e) {
       throw AppException(message: 'Falha ao obter coleção: $e');
+    }
+  }
+
+  Future<Album> createItem({
+    required ItemType itemType,
+    required String title,
+    required int artistId,
+    String? formatEdition,
+    String? coverUrl,
+  }) async {
+    await _ensureCurrentUserIsAdmin();
+
+    final table = _tableByType(itemType);
+
+    try {
+      final data = await _client
+          .from(table)
+          .insert({
+            'title': title.trim(),
+            'artist_id': artistId,
+            'on_shelf': true,
+            'format_edition': formatEdition?.trim().isEmpty == true ? null : formatEdition?.trim(),
+            'cover_url': coverUrl?.trim().isEmpty == true ? null : coverUrl?.trim(),
+          })
+          .select('id, title, artist_id, on_shelf, cover_url, format_edition, created_at')
+          .single();
+
+      return Album.fromMap(data);
+    } catch (e) {
+      throw AppException(message: 'Falha ao criar item: $e');
+    }
+  }
+
+  Future<Album> updateItem({
+    required ItemType itemType,
+    required int itemId,
+    required String title,
+    required int artistId,
+    String? formatEdition,
+    String? coverUrl,
+  }) async {
+    await _ensureCurrentUserIsAdmin();
+
+    final table = _tableByType(itemType);
+
+    try {
+      final data = await _client
+          .from(table)
+          .update({
+            'title': title.trim(),
+            'artist_id': artistId,
+            'format_edition': formatEdition?.trim().isEmpty == true ? null : formatEdition?.trim(),
+            'cover_url': coverUrl?.trim().isEmpty == true ? null : coverUrl?.trim(),
+          })
+          .eq('id', itemId)
+          .select('id, title, artist_id, on_shelf, cover_url, format_edition, created_at')
+          .single();
+
+      return Album.fromMap(data);
+    } catch (e) {
+      throw AppException(message: 'Falha ao editar item: $e');
+    }
+  }
+
+  Future<String> uploadCover({
+    required Uint8List fileBytes,
+    required String fileExtension,
+  }) async {
+    await _ensureCurrentUserIsAdmin();
+
+    final userId = _requireUserId();
+    final ext = fileExtension.toLowerCase().replaceAll('.', '');
+    final path = '$userId/cover_${DateTime.now().millisecondsSinceEpoch}.$ext';
+
+    final contentType = switch (ext) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      'gif' => 'image/gif',
+      _ => 'image/jpeg',
+    };
+
+    try {
+      await _client.storage.from('covers').uploadBinary(
+            path,
+            fileBytes,
+            fileOptions: FileOptions(
+              upsert: true,
+              contentType: contentType,
+            ),
+          );
+
+      return _client.storage.from('covers').getPublicUrl(path);
+    } on StorageException catch (e) {
+      final msg = e.message.toLowerCase();
+      final isUnauthorized =
+          e.statusCode == '403' || msg.contains('row level security');
+      if (isUnauthorized) {
+        throw AppException(
+          message:
+              'Sem permissão para upload no bucket covers (RLS). Configura as policies de INSERT/UPDATE/SELECT para o utilizador autenticado/admin.',
+        );
+      }
+      throw AppException(message: 'Falha ao carregar capa: ${e.message}');
+    } catch (e) {
+      throw AppException(message: 'Falha ao carregar capa: $e');
     }
   }
 

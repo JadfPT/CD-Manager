@@ -3,12 +3,14 @@ class Artist {
     required this.id,
     required this.name,
     required this.genreText,
+    required this.imageUrl,
     required this.createdAt,
   });
 
   final int id;
   final String name;
   final String? genreText;
+  final String? imageUrl;
   final DateTime? createdAt;
 
   factory Artist.fromMap(Map<String, dynamic> map) {
@@ -16,6 +18,7 @@ class Artist {
       id: _asInt(map['id']),
       name: map['name'] as String,
       genreText: map['genre_text'] as String?,
+      imageUrl: map['image_url'] as String?,
       createdAt: _asDateTime(map['created_at']),
     );
   }
@@ -25,6 +28,7 @@ class Artist {
       'id': id,
       'name': name,
       'genre_text': genreText,
+      'image_url': imageUrl,
       'created_at': createdAt?.toIso8601String(),
     };
   }

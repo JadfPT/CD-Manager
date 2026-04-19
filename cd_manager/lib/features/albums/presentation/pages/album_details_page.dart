@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/config/supabase_config.dart';
 import '../../../../shared/models/album_loan.dart';
 import '../../../../shared/models/item_type.dart';
@@ -58,7 +59,16 @@ class AlbumDetailsPage extends ConsumerWidget {
         itemType == ItemType.cd ? 'CD não encontrado' : 'Vinil não encontrado';
 
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(
+        title: Text(title),
+        actions: [
+          IconButton(
+            tooltip: 'Random',
+            onPressed: () => context.push('/random'),
+            icon: const Icon(Icons.casino_outlined),
+          ),
+        ],
+      ),
       body: detailsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => AppErrorState(
@@ -114,6 +124,21 @@ class AlbumDetailsPage extends ConsumerWidget {
               padding: const EdgeInsets.all(16),
               children: [
                 AlbumHeaderCard(details: details),
+                if (details.currentUserIsAdmin) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        final typeSegment =
+                            itemType == ItemType.cd ? 'cd' : 'vinyl';
+                        context.push('/admin/items/$typeSegment/$albumId/edit');
+                      },
+                      icon: const Icon(Icons.edit_outlined),
+                      label: const Text('Editar item'),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 AlbumMetaSection(details: details),
                 const SizedBox(height: 12),

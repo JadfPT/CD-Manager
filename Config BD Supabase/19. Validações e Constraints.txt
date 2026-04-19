@@ -1,0 +1,190 @@
+begin;
+
+-- =========================================================
+-- 1) WISHLIST: garantir artist_name limpo quando existe
+-- =========================================================
+
+alter table public.wishlist_items
+  drop constraint if exists wishlist_artist_name_not_blank_chk;
+
+alter table public.wishlist_items
+  add constraint wishlist_artist_name_not_blank_chk
+  check (
+    artist_name is null
+    or nullif(trim(artist_name), '') is not null
+  );
+
+-- =========================================================
+-- 2) WISHLIST: garantir title não vazio/whitespace
+-- =========================================================
+
+alter table public.wishlist_items
+  drop constraint if exists wishlist_title_not_blank_chk;
+
+alter table public.wishlist_items
+  add constraint wishlist_title_not_blank_chk
+  check (
+    nullif(trim(title), '') is not null
+  );
+
+-- =========================================================
+-- 3) WISHLIST: garantir format_edition limpo quando existe
+-- =========================================================
+
+alter table public.wishlist_items
+  drop constraint if exists wishlist_format_edition_not_blank_chk;
+
+alter table public.wishlist_items
+  add constraint wishlist_format_edition_not_blank_chk
+  check (
+    format_edition is null
+    or nullif(trim(format_edition), '') is not null
+  );
+
+-- =========================================================
+-- 4) WISHLIST: garantir notes limpas quando existem
+-- =========================================================
+
+alter table public.wishlist_items
+  drop constraint if exists wishlist_notes_not_blank_chk;
+
+alter table public.wishlist_items
+  add constraint wishlist_notes_not_blank_chk
+  check (
+    notes is null
+    or nullif(trim(notes), '') is not null
+  );
+
+-- =========================================================
+-- 5) WISHLIST: garantir consistência do tipo convertido
+-- o item convertido tem de ser do mesmo tipo do wishlist item
+-- =========================================================
+
+alter table public.wishlist_items
+  drop constraint if exists wishlist_converted_type_matches_item_type_chk;
+
+alter table public.wishlist_items
+  add constraint wishlist_converted_type_matches_item_type_chk
+  check (
+    converted_to_item_type is null
+    or converted_to_item_type = item_type
+  );
+
+-- =========================================================
+-- 6) WISHLIST: se há artist_id e artist_name, ambos podem coexistir
+-- mas se o status for converted, artist_id tem de existir
+-- =========================================================
+
+alter table public.wishlist_items
+  drop constraint if exists wishlist_converted_requires_artist_id_chk;
+
+alter table public.wishlist_items
+  add constraint wishlist_converted_requires_artist_id_chk
+  check (
+    status <> 'converted'
+    or artist_id is not null
+  );
+
+-- =========================================================
+-- 7) ITEM COLLECTIONS: nome não pode ser vazio
+-- =========================================================
+
+alter table public.item_collections
+  drop constraint if exists item_collections_name_not_blank_chk;
+
+alter table public.item_collections
+  add constraint item_collections_name_not_blank_chk
+  check (
+    nullif(trim(name), '') is not null
+  );
+
+-- =========================================================
+-- 8) ITEM COLLECTIONS: description limpa quando existe
+-- =========================================================
+
+alter table public.item_collections
+  drop constraint if exists item_collections_description_not_blank_chk;
+
+alter table public.item_collections
+  add constraint item_collections_description_not_blank_chk
+  check (
+    description is null
+    or nullif(trim(description), '') is not null
+  );
+
+-- =========================================================
+-- 9) ITEM COLLECTION ENTRIES: label limpo quando existe
+-- =========================================================
+
+alter table public.item_collection_entries
+  drop constraint if exists item_collection_entries_label_not_blank_chk;
+
+alter table public.item_collection_entries
+  add constraint item_collection_entries_label_not_blank_chk
+  check (
+    label is null
+    or nullif(trim(label), '') is not null
+  );
+
+-- =========================================================
+-- 10) ITEM COLLECTION ENTRIES:
+-- impedir duas posições iguais na mesma coleção quando a posição existe
+-- =========================================================
+
+create unique index if not exists item_collection_entries_unique_position_per_collection_idx
+  on public.item_collection_entries (collection_id, position)
+  where position is not null;
+
+-- =========================================================
+-- 11) CD ALBUMS: format_edition limpo quando existe
+-- =========================================================
+
+alter table public.cd_albums
+  drop constraint if exists cd_albums_format_edition_not_blank_chk;
+
+alter table public.cd_albums
+  add constraint cd_albums_format_edition_not_blank_chk
+  check (
+    format_edition is null
+    or nullif(trim(format_edition), '') is not null
+  );
+
+-- =========================================================
+-- 12) VINYL ALBUMS: format_edition limpo quando existe
+-- =========================================================
+
+alter table public.vinyl_albums
+  drop constraint if exists vinyl_albums_format_edition_not_blank_chk;
+
+alter table public.vinyl_albums
+  add constraint vinyl_albums_format_edition_not_blank_chk
+  check (
+    format_edition is null
+    or nullif(trim(format_edition), '') is not null
+  );
+
+-- =========================================================
+-- 13) CD/VINYL: admin_notes limpo quando existe
+-- =========================================================
+
+alter table public.cd_albums
+  drop constraint if exists cd_albums_admin_notes_not_blank_chk;
+
+alter table public.cd_albums
+  add constraint cd_albums_admin_notes_not_blank_chk
+  check (
+    admin_notes is null
+    or nullif(trim(admin_notes), '') is not null
+  );
+
+alter table public.vinyl_albums
+  drop constraint if exists vinyl_albums_admin_notes_not_blank_chk;
+
+alter table public.vinyl_albums
+  add constraint vinyl_albums_admin_notes_not_blank_chk
+  check (
+    admin_notes is null
+    or nullif(trim(admin_notes), '') is not null
+  );
+
+commit;

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_error_state.dart';
 import '../../../favorites/application/favorite_providers.dart';
+import '../../../profile/application/profile_providers.dart';
 import '../../application/artist_providers.dart';
 
 class ArtistsPage extends ConsumerWidget {
@@ -12,9 +13,26 @@ class ArtistsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final artistsAsync = ref.watch(artistsProvider);
+    final profile = ref.watch(currentProfileProvider).valueOrNull;
+    final isAdmin = profile?.isAdmin ?? false;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Artistas')),
+      appBar: AppBar(
+        title: const Text('Artistas'),
+        actions: [
+          IconButton(
+            tooltip: 'Random',
+            onPressed: () => context.push('/random'),
+            icon: const Icon(Icons.casino_outlined),
+          ),
+          if (isAdmin)
+            IconButton(
+              tooltip: 'Novo artista',
+              onPressed: () => context.push('/admin/artists/new'),
+              icon: const Icon(Icons.add),
+            ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(artistsProvider);
@@ -63,7 +81,12 @@ class ArtistsPage extends ConsumerWidget {
                 final isFavoriteArtist = isFavoriteArtistAsync.valueOrNull ?? false;
                 return ListTile(
                   leading: CircleAvatar(
-                    child: Text(artist.name.isNotEmpty ? artist.name[0].toUpperCase() : '?'),
+                    backgroundImage: artist.imageUrl == null || artist.imageUrl!.trim().isEmpty
+                        ? null
+                        : NetworkImage(artist.imageUrl!.trim()),
+                    child: artist.imageUrl == null || artist.imageUrl!.trim().isEmpty
+                        ? Text(artist.name.isNotEmpty ? artist.name[0].toUpperCase() : '?')
+                        : null,
                   ),
                   title: Text(artist.name),
                   subtitle: Text(
@@ -74,6 +97,12 @@ class ArtistsPage extends ConsumerWidget {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      if (isAdmin)
+                        IconButton(
+                          tooltip: 'Editar artista',
+                          icon: const Icon(Icons.edit_outlined),
+                          onPressed: () => context.push('/admin/artists/${artist.id}/edit'),
+                        ),
                       IconButton(
                         tooltip: isFavoriteArtist
                             ? 'Remover artista dos favoritos'

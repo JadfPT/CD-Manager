@@ -7,6 +7,7 @@ class AlbumListItem {
     required this.artistId,
     required this.artistName,
     required this.artistGenreText,
+    this.artistImageUrl,
     required this.onShelf,
     required this.coverUrl,
     required this.createdAt,
@@ -21,6 +22,7 @@ class AlbumListItem {
   final int artistId;
   final String artistName;
   final String? artistGenreText;
+  final String? artistImageUrl;
   final bool onShelf;
   final String? coverUrl;
   final DateTime? createdAt;
@@ -41,6 +43,7 @@ class AlbumListItem {
       artistId: artistId,
       artistName: artistName,
       artistGenreText: artistGenreText,
+      artistImageUrl: artistImageUrl,
       onShelf: onShelf,
       coverUrl: coverUrl,
       createdAt: createdAt,

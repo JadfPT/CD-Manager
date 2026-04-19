@@ -16,6 +16,13 @@ class FavoritesPage extends ConsumerWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Favoritos'),
+          actions: [
+            IconButton(
+              tooltip: 'Random',
+              onPressed: () => context.push('/random'),
+              icon: const Icon(Icons.casino_outlined),
+            ),
+          ],
           bottom: const TabBar(
             tabs: [
               Tab(icon: Icon(Icons.favorite), text: 'Itens'),
@@ -76,6 +83,7 @@ class _FavoriteItemsTab extends ConsumerWidget {
               return AlbumListTile(
                 item: item,
                 onTap: () => context.push('/albums/${item.albumId}', extra: item.itemType),
+                onArtistTap: () => context.push('/artists/${item.artistId}'),
                 trailing: IconButton(
                   tooltip: 'Remover dos favoritos',
                   icon: const Icon(Icons.favorite),
@@ -145,7 +153,12 @@ class _FavoriteArtistsTab extends ConsumerWidget {
               final artist = artists[index];
               return ListTile(
                 leading: CircleAvatar(
-                  child: Text(artist.name.isNotEmpty ? artist.name[0].toUpperCase() : '?'),
+                  backgroundImage: artist.imageUrl == null || artist.imageUrl!.trim().isEmpty
+                      ? null
+                      : NetworkImage(artist.imageUrl!.trim()),
+                  child: artist.imageUrl == null || artist.imageUrl!.trim().isEmpty
+                      ? Text(artist.name.isNotEmpty ? artist.name[0].toUpperCase() : '?')
+                      : null,
                 ),
                 title: Text(artist.name),
                 subtitle: Text(
@@ -221,6 +234,7 @@ class _WishlistTab extends ConsumerWidget {
               return AlbumListTile(
                 item: item,
                 onTap: () => context.push('/albums/${item.albumId}', extra: item.itemType),
+                onArtistTap: () => context.push('/artists/${item.artistId}'),
                 trailing: IconButton(
                   tooltip: 'Remover da wishlist',
                   icon: const Icon(Icons.push_pin),

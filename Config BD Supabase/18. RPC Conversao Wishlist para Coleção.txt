@@ -1,0 +1,169 @@
+begin;
+
+drop function if exists public.convert_wishlist_item_to_collection(
+  bigint,
+  bigint,
+  text,
+  text,
+  text,
+  boolean
+);
+
+create or replace function public.convert_wishlist_item_to_collection(
+  p_wishlist_id bigint,
+  p_artist_id bigint,
+  p_title text default null,
+  p_cover_url text default null,
+  p_format_edition text default null,
+  p_on_shelf boolean default true
+)
+returns table (
+  item_type text,
+  item_id bigint
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid;
+  v_is_admin boolean;
+
+  v_wishlist public.wishlist_items%rowtype;
+
+  v_final_title text;
+  v_final_cover_url text;
+  v_final_format_edition text;
+
+  v_new_item_id bigint;
+begin
+  v_user_id := auth.uid();
+
+  if v_user_id is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  v_is_admin := public.current_user_is_admin();
+
+  if not v_is_admin then
+    raise exception 'Only admins can convert wishlist items';
+  end if;
+
+  -- bloquear a row da wishlist para evitar conversões concorrentes
+  select *
+    into v_wishlist
+  from public.wishlist_items
+  where id = p_wishlist_id
+  for update;
+
+  if not found then
+    raise exception 'Wishlist item not found';
+  end if;
+
+  if v_wishlist.status <> 'pending' then
+    raise exception 'Wishlist item is not pending';
+  end if;
+
+  if v_wishlist.item_type not in ('cd', 'vinyl') then
+    raise exception 'Invalid wishlist item_type';
+  end if;
+
+  -- validar artista escolhido pelo admin
+  if p_artist_id is null then
+    raise exception 'artist_id is required to convert wishlist item';
+  end if;
+
+  if not exists (
+    select 1
+    from public.artists a
+    where a.id = p_artist_id
+  ) then
+    raise exception 'Artist not found';
+  end if;
+
+  v_final_title := coalesce(nullif(trim(p_title), ''), v_wishlist.title);
+  v_final_cover_url := coalesce(nullif(trim(p_cover_url), ''), v_wishlist.cover_url);
+  v_final_format_edition := coalesce(nullif(trim(p_format_edition), ''), v_wishlist.format_edition);
+
+  if nullif(trim(v_final_title), '') is null then
+    raise exception 'Title is required';
+  end if;
+
+  if v_wishlist.item_type = 'cd' then
+    insert into public.cd_albums (
+      title,
+      artist_id,
+      on_shelf,
+      cover_url,
+      format_edition
+    )
+    values (
+      v_final_title,
+      p_artist_id,
+      coalesce(p_on_shelf, true),
+      v_final_cover_url,
+      v_final_format_edition
+    )
+    returning id into v_new_item_id;
+
+    update public.wishlist_items
+    set
+      artist_id = p_artist_id,
+      status = 'converted',
+      converted_at = timezone('utc', now()),
+      converted_to_item_type = 'cd',
+      converted_to_item_id = v_new_item_id,
+      converted_by_user_id = v_user_id
+    where id = v_wishlist.id;
+
+    item_type := 'cd';
+    item_id := v_new_item_id;
+    return next;
+
+  elsif v_wishlist.item_type = 'vinyl' then
+    insert into public.vinyl_albums (
+      title,
+      artist_id,
+      on_shelf,
+      cover_url,
+      format_edition
+    )
+    values (
+      v_final_title,
+      p_artist_id,
+      coalesce(p_on_shelf, true),
+      v_final_cover_url,
+      v_final_format_edition
+    )
+    returning id into v_new_item_id;
+
+    update public.wishlist_items
+    set
+      artist_id = p_artist_id,
+      status = 'converted',
+      converted_at = timezone('utc', now()),
+      converted_to_item_type = 'vinyl',
+      converted_to_item_id = v_new_item_id,
+      converted_by_user_id = v_user_id
+    where id = v_wishlist.id;
+
+    item_type := 'vinyl';
+    item_id := v_new_item_id;
+    return next;
+
+  else
+    raise exception 'Unsupported item_type';
+  end if;
+end;
+$$;
+
+grant execute on function public.convert_wishlist_item_to_collection(
+  bigint,
+  bigint,
+  text,
+  text,
+  text,
+  boolean
+) to authenticated;
+
+commit;

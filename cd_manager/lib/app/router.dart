@@ -13,6 +13,9 @@ import '../features/artists/presentation/pages/artist_details_page.dart';
 import '../features/loans/presentation/pages/loans_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
+import '../features/random/presentation/pages/random_page.dart';
+import '../features/admin/presentation/pages/admin_item_form_page.dart';
+import '../features/admin/presentation/pages/admin_artist_form_page.dart';
 import '../shared/models/item_type.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
@@ -105,6 +108,48 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/settings',
             builder: (context, state) => const SettingsPage(),
+          ),
+          GoRoute(
+            path: '/random',
+            builder: (context, state) => const RandomPage(),
+          ),
+          GoRoute(
+            path: '/admin/items/new/:itemType',
+            builder: (context, state) {
+              final itemTypeRaw = state.pathParameters['itemType'] ?? 'cd';
+              final itemType = itemTypeRaw == 'vinyl' ? ItemType.vinyl : ItemType.cd;
+              return AdminItemFormPage.create(itemType: itemType);
+            },
+          ),
+          GoRoute(
+            path: '/admin/artists/new',
+            builder: (context, state) => const AdminArtistFormPage.create(),
+          ),
+          GoRoute(
+            path: '/admin/artists/:artistId/edit',
+            builder: (context, state) {
+              final artistId = int.tryParse(state.pathParameters['artistId'] ?? '');
+              if (artistId == null) {
+                return const Scaffold(
+                  body: Center(child: Text('ID de artista inválido')),
+                );
+              }
+              return AdminArtistFormPage.edit(artistId: artistId);
+            },
+          ),
+          GoRoute(
+            path: '/admin/items/:itemType/:itemId/edit',
+            builder: (context, state) {
+              final itemTypeRaw = state.pathParameters['itemType'] ?? 'cd';
+              final itemType = itemTypeRaw == 'vinyl' ? ItemType.vinyl : ItemType.cd;
+              final itemId = int.tryParse(state.pathParameters['itemId'] ?? '');
+              if (itemId == null) {
+                return const Scaffold(
+                  body: Center(child: Text('ID de item inválido')),
+                );
+              }
+              return AdminItemFormPage.edit(itemType: itemType, itemId: itemId);
+            },
           ),
         ],
       ),

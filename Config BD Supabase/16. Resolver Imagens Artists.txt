@@ -1,0 +1,63 @@
+-- Garantir RLS ativo
+alter table public.artists enable row level security;
+
+-- SELECT público (ou restringe a authenticated se preferires)
+drop policy if exists "Artists read" on public.artists;
+create policy "Artists read"
+on public.artists
+for select
+to public
+using (true);
+
+-- INSERT apenas admin
+drop policy if exists "Artists insert admin" on public.artists;
+create policy "Artists insert admin"
+on public.artists
+for insert
+to authenticated
+with check (
+  exists (
+    select 1
+    from public.profiles p
+    where p.id = auth.uid()
+      and p.is_admin = true
+  )
+);
+
+-- UPDATE apenas admin
+drop policy if exists "Artists update admin" on public.artists;
+create policy "Artists update admin"
+on public.artists
+for update
+to authenticated
+using (
+  exists (
+    select 1
+    from public.profiles p
+    where p.id = auth.uid()
+      and p.is_admin = true
+  )
+)
+with check (
+  exists (
+    select 1
+    from public.profiles p
+    where p.id = auth.uid()
+      and p.is_admin = true
+  )
+);
+
+-- (Opcional) DELETE apenas admin
+drop policy if exists "Artists delete admin" on public.artists;
+create policy "Artists delete admin"
+on public.artists
+for delete
+to authenticated
+using (
+  exists (
+    select 1
+    from public.profiles p
+    where p.id = auth.uid()
+      and p.is_admin = true
+  )
+);

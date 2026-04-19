@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../shared/models/item_type.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_error_state.dart';
 import '../../../../shared/widgets/app_search_field.dart';
+import '../../../profile/application/profile_providers.dart';
 import '../../application/album_view_providers.dart';
 import '../widgets/album_list_tile.dart';
 
@@ -34,9 +36,52 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
     final albumsAsync = ref.watch(visibleAlbumsProvider);
     final filter = ref.watch(albumShelfFilterProvider);
     final typeFilter = ref.watch(itemTypeFilterProvider);
+    final profile = ref.watch(currentProfileProvider).valueOrNull;
+    final isAdmin = profile?.isAdmin ?? false;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Coleção')),
+      appBar: AppBar(
+        title: const Text('Coleção'),
+        actions: [
+          IconButton(
+            tooltip: 'Random',
+            onPressed: () => context.push('/random'),
+            icon: const Icon(Icons.casino_outlined),
+          ),
+          if (isAdmin)
+            IconButton(
+              tooltip: 'Criar item',
+              onPressed: () async {
+                final selected = await showModalBottomSheet<ItemType>(
+                  context: context,
+                  showDragHandle: true,
+                  builder: (context) => SafeArea(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.album_outlined),
+                          title: const Text('Novo CD'),
+                          onTap: () => Navigator.of(context).pop(ItemType.cd),
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.album),
+                          title: const Text('Novo Vinil'),
+                          onTap: () => Navigator.of(context).pop(ItemType.vinyl),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+
+                if (!context.mounted || selected == null) return;
+                final typeSegment = selected == ItemType.cd ? 'cd' : 'vinyl';
+                context.push('/admin/items/new/$typeSegment');
+              },
+              icon: const Icon(Icons.add),
+            ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(
@@ -146,6 +191,7 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
                       return AlbumListTile(
                         item: item,
                         onTap: () => context.push('/albums/${item.albumId}', extra: item.itemType),
+                        onArtistTap: () => context.push('/artists/${item.artistId}'),
                       );
                     },
                   );

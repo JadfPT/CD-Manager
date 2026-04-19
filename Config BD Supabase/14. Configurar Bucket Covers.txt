@@ -1,0 +1,44 @@
+-- Bucket (caso ainda não exista)
+insert into storage.buckets (id, name, public)
+values ('covers', 'covers', true)
+on conflict (id) do nothing;
+
+-- Ler ficheiros (público)
+create policy "Covers public read"
+on storage.objects
+for select
+to public
+using (bucket_id = 'covers');
+
+-- Upload por utilizador autenticado (na sua própria pasta: <uid>/...)
+create policy "Covers auth insert own folder"
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'covers'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Update/delete do próprio ficheiro
+create policy "Covers auth update own folder"
+on storage.objects
+for update
+to authenticated
+using (
+  bucket_id = 'covers'
+  and (storage.foldername(name))[1] = auth.uid()::text
+)
+with check (
+  bucket_id = 'covers'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);
+
+create policy "Covers auth delete own folder"
+on storage.objects
+for delete
+to authenticated
+using (
+  bucket_id = 'covers'
+  and (storage.foldername(name))[1] = auth.uid()::text
+);

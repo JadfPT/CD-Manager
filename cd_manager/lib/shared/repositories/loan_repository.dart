@@ -143,7 +143,7 @@ class LoanRepository {
       if (allArtistIds.isNotEmpty) {
         final artists = await _client
             .from('artists')
-            .select('id, name')
+             .select('id, name, genre_text, image_url')
             .inFilter('id', allArtistIds);
         for (final artist in artists) {
           final id = _asInt(artist['id']);
@@ -227,7 +227,7 @@ class LoanRepository {
       if (artistIds.isNotEmpty) {
         final artists = await _client
             .from('artists')
-            .select('id, name, genre_text, created_at')
+            .select('id, name, genre_text, image_url, created_at')
             .inFilter('id', artistIds);
 
         for (final artist in artists) {
@@ -245,6 +245,7 @@ class LoanRepository {
           artistId: artistId,
           artistName: (artist['name'] as String?) ?? 'Unknown',
           artistGenreText: artist['genre_text'] as String?,
+          artistImageUrl: artist['image_url'] as String?,
           onShelf: row['on_shelf'] as bool,
           coverUrl: row['cover_url'] as String?,
           createdAt: _asDateTime(row['created_at']),

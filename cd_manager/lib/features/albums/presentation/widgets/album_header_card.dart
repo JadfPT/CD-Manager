@@ -38,22 +38,54 @@ class AlbumHeaderCard extends StatelessWidget {
                           fontWeight: FontWeight.w700,
                         ),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    artist.name,
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  if (artist.genreText != null && artist.genreText!.trim().isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        artist.genreText!,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  const SizedBox(height: 10),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundImage:
+                            artist.imageUrl == null || artist.imageUrl!.trim().isEmpty
+                            ? null
+                            : NetworkImage(artist.imageUrl!.trim()),
+                        child: artist.imageUrl == null || artist.imageUrl!.trim().isEmpty
+                            ? Text(
+                                artist.name.isNotEmpty
+                                    ? artist.name[0].toUpperCase()
+                                    : '?',
+                              )
+                            : null,
                       ),
-                    ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              artist.name,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            if (artist.genreText != null &&
+                                artist.genreText!.trim().isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Text(
+                                  artist.genreText!,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant,
+                                      ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ],
               ),
             ),

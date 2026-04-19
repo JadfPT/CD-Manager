@@ -1,0 +1,282 @@
+begin;
+
+-- =========================================================
+-- 1) WISHLIST NOVA (ENTIDADE PRÓPRIA)
+-- =========================================================
+
+create table if not exists public.wishlist_items (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  item_type text not null check (item_type in ('cd', 'vinyl')),
+  title text not null,
+  artist_id bigint references public.artists(id) on delete set null,
+  artist_name text,
+  cover_url text,
+  format_edition text,
+  notes text,
+  status text not null default 'pending'
+    check (status in ('pending', 'converted')),
+  converted_at timestamptz,
+  converted_to_item_type text
+    check (converted_to_item_type is null or converted_to_item_type in ('cd', 'vinyl')),
+  converted_to_item_id bigint,
+  converted_by_user_id uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+
+  constraint wishlist_artist_present_chk
+    check (
+      artist_id is not null
+      or nullif(trim(coalesce(artist_name, '')), '') is not null
+    ),
+
+  constraint wishlist_conversion_fields_chk
+    check (
+      (status = 'pending'
+        and converted_at is null
+        and converted_to_item_type is null
+        and converted_to_item_id is null
+        and converted_by_user_id is null)
+      or
+      (status = 'converted'
+        and converted_at is not null
+        and converted_to_item_type is not null
+        and converted_to_item_id is not null
+        and converted_by_user_id is not null)
+    )
+);
+
+create index if not exists wishlist_items_user_idx
+  on public.wishlist_items (user_id, created_at desc);
+
+create index if not exists wishlist_items_status_idx
+  on public.wishlist_items (status, created_at desc);
+
+create index if not exists wishlist_items_artist_id_idx
+  on public.wishlist_items (artist_id);
+
+create index if not exists wishlist_items_type_idx
+  on public.wishlist_items (item_type, created_at desc);
+
+-- updated_at trigger
+create or replace function public.set_wishlist_items_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = timezone('utc', now());
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_set_wishlist_items_updated_at on public.wishlist_items;
+
+create trigger trg_set_wishlist_items_updated_at
+before update on public.wishlist_items
+for each row
+execute function public.set_wishlist_items_updated_at();
+
+
+-- =========================================================
+-- 2) ITEM COLLECTIONS / SÉRIES / BOX SETS
+-- =========================================================
+
+create table if not exists public.item_collections (
+  id bigint generated always as identity primary key,
+  name text not null,
+  description text,
+  cover_url text,
+  created_by_user_id uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists item_collections_name_idx
+  on public.item_collections (name);
+
+create or replace function public.set_item_collections_updated_at()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = timezone('utc', now());
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_set_item_collections_updated_at on public.item_collections;
+
+create trigger trg_set_item_collections_updated_at
+before update on public.item_collections
+for each row
+execute function public.set_item_collections_updated_at();
+
+
+create table if not exists public.item_collection_entries (
+  collection_id bigint not null references public.item_collections(id) on delete cascade,
+  item_type text not null check (item_type in ('cd', 'vinyl')),
+  item_id bigint not null,
+  position integer,
+  label text,
+  created_at timestamptz not null default timezone('utc', now()),
+  primary key (collection_id, item_type, item_id)
+);
+
+-- um item só pode pertencer a no máximo uma coleção/série
+create unique index if not exists item_collection_entries_unique_item_idx
+  on public.item_collection_entries (item_type, item_id);
+
+create index if not exists item_collection_entries_collection_position_idx
+  on public.item_collection_entries (collection_id, position nulls last, created_at);
+
+-- opcionalmente garantir position positiva quando existe
+alter table public.item_collection_entries
+  drop constraint if exists item_collection_entries_position_positive_chk;
+
+alter table public.item_collection_entries
+  add constraint item_collection_entries_position_positive_chk
+  check (position is null or position > 0);
+
+
+-- =========================================================
+-- 3) RLS
+-- =========================================================
+
+alter table public.wishlist_items enable row level security;
+alter table public.item_collections enable row level security;
+alter table public.item_collection_entries enable row level security;
+
+-- limpar policies antigas se existirem
+drop policy if exists "wishlist_items_select_own_or_admin" on public.wishlist_items;
+drop policy if exists "wishlist_items_insert_own" on public.wishlist_items;
+drop policy if exists "wishlist_items_update_own_or_admin" on public.wishlist_items;
+drop policy if exists "wishlist_items_delete_own_or_admin" on public.wishlist_items;
+
+drop policy if exists "item_collections_select_authenticated" on public.item_collections;
+drop policy if exists "item_collections_insert_admin" on public.item_collections;
+drop policy if exists "item_collections_update_admin" on public.item_collections;
+drop policy if exists "item_collections_delete_admin" on public.item_collections;
+
+drop policy if exists "item_collection_entries_select_authenticated" on public.item_collection_entries;
+drop policy if exists "item_collection_entries_insert_admin" on public.item_collection_entries;
+drop policy if exists "item_collection_entries_update_admin" on public.item_collection_entries;
+drop policy if exists "item_collection_entries_delete_admin" on public.item_collection_entries;
+
+-- wishlist_items
+-- users vêem a própria wishlist; admins vêem todas
+create policy "wishlist_items_select_own_or_admin"
+on public.wishlist_items
+for select
+to authenticated
+using (
+  auth.uid() = user_id
+  or public.current_user_is_admin()
+);
+
+-- qualquer user autenticado pode criar wishlists para si
+create policy "wishlist_items_insert_own"
+on public.wishlist_items
+for insert
+to authenticated
+with check (
+  auth.uid() = user_id
+);
+
+-- users podem editar as suas; admins podem editar qualquer uma
+-- isto permite aos admins marcar como converted
+create policy "wishlist_items_update_own_or_admin"
+on public.wishlist_items
+for update
+to authenticated
+using (
+  auth.uid() = user_id
+  or public.current_user_is_admin()
+)
+with check (
+  auth.uid() = user_id
+  or public.current_user_is_admin()
+);
+
+-- users podem apagar as suas; admins também
+create policy "wishlist_items_delete_own_or_admin"
+on public.wishlist_items
+for delete
+to authenticated
+using (
+  auth.uid() = user_id
+  or public.current_user_is_admin()
+);
+
+-- item_collections
+create policy "item_collections_select_authenticated"
+on public.item_collections
+for select
+to authenticated
+using (true);
+
+create policy "item_collections_insert_admin"
+on public.item_collections
+for insert
+to authenticated
+with check (public.current_user_is_admin());
+
+create policy "item_collections_update_admin"
+on public.item_collections
+for update
+to authenticated
+using (public.current_user_is_admin())
+with check (public.current_user_is_admin());
+
+create policy "item_collections_delete_admin"
+on public.item_collections
+for delete
+to authenticated
+using (public.current_user_is_admin());
+
+-- item_collection_entries
+create policy "item_collection_entries_select_authenticated"
+on public.item_collection_entries
+for select
+to authenticated
+using (true);
+
+create policy "item_collection_entries_insert_admin"
+on public.item_collection_entries
+for insert
+to authenticated
+with check (public.current_user_is_admin());
+
+create policy "item_collection_entries_update_admin"
+on public.item_collection_entries
+for update
+to authenticated
+using (public.current_user_is_admin())
+with check (public.current_user_is_admin());
+
+create policy "item_collection_entries_delete_admin"
+on public.item_collection_entries
+for delete
+to authenticated
+using (public.current_user_is_admin());
+
+
+-- =========================================================
+-- 4) GRANTS
+-- =========================================================
+
+grant select, insert, update, delete on public.wishlist_items to authenticated;
+grant select on public.item_collections to authenticated;
+grant select on public.item_collection_entries to authenticated;
+
+grant insert, update, delete on public.item_collections to authenticated;
+grant insert, update, delete on public.item_collection_entries to authenticated;
+
+
+-- =========================================================
+-- 5) DADOS DE EXEMPLO OPCIONAIS (comentados)
+-- =========================================================
+-- Exemplo de coleção/série:
+-- insert into public.item_collections (name, description, created_by_user_id)
+-- values ('Coldplay Box Set', 'Conjunto com 4 álbuns relacionados', auth.uid());
+
+commit;

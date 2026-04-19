@@ -8,6 +8,7 @@ class Album {
     required this.onShelf,
     required this.coverUrl,
     required this.createdAt,
+    this.formatEdition,
   });
 
   final int id;
@@ -16,6 +17,7 @@ class Album {
   final bool onShelf;
   final String? coverUrl;
   final DateTime? createdAt;
+  final String? formatEdition;
 
   // Implicitly CD type since cd_albums only contains CDs
   ItemType get itemType => ItemType.cd;
@@ -28,6 +30,7 @@ class Album {
       onShelf: map['on_shelf'] as bool,
       coverUrl: map['cover_url'] as String?,
       createdAt: _asDateTime(map['created_at']),
+      formatEdition: map['format_edition'] as String?,
     );
   }
 
@@ -38,6 +41,7 @@ class Album {
       'artist_id': artistId,
       'on_shelf': onShelf,
       'cover_url': coverUrl,
+      'format_edition': formatEdition,
       'created_at': createdAt?.toIso8601String(),
     };
   }
