@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/config/supabase_config.dart';
 import '../../../../shared/widgets/app_error_state.dart';
 import '../../../auth/application/auth_providers.dart';
 import '../../application/profile_providers.dart';
@@ -20,7 +19,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   final _displayNameController = TextEditingController();
   final _avatarUrlController = TextEditingController();
 
-  bool _didLoadInitialValues = false;
+  String? _loadedProfileId;
 
   @override
   void dispose() {
@@ -34,8 +33,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(currentProfileProvider);
     final updateState = ref.watch(profileUpdateControllerProvider);
+    final authState = ref.watch(authProvider);
 
-    final email = SupabaseConfig.client.auth.currentUser?.email;
+    final email = authState is AuthSuccess ? authState.user.email : null;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Perfil')),
@@ -46,11 +46,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           onRetry: () => ref.invalidate(currentProfileProvider),
         ),
         data: (profile) {
-          if (!_didLoadInitialValues) {
+          final profileId = profile?.id;
+          if (_loadedProfileId != profileId) {
             _usernameController.text = profile?.username ?? '';
             _displayNameController.text = profile?.displayName ?? '';
             _avatarUrlController.text = profile?.avatarUrl ?? '';
-            _didLoadInitialValues = true;
+            _loadedProfileId = profileId;
           }
 
           final avatarSource = _avatarUrlController.text.trim().isNotEmpty
