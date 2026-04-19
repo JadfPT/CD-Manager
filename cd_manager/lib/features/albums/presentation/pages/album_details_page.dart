@@ -32,18 +32,24 @@ class AlbumDetailsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final key = AlbumDetailsKey(albumId: albumId, itemType: itemType);
     final loanKey = LoanItemKey(albumId: albumId, itemType: itemType);
+    final favoriteKey = FavoriteItemKey(itemId: albumId, itemType: itemType);
+    final noteKey = NoteItemKey(itemId: albumId, itemType: itemType);
     final detailsAsync = ref.watch(albumDetailsProvider(key));
-    final favoriteAsync = ref.watch(isFavoriteAlbumProvider(albumId));
-    final noteAsync = ref.watch(albumNoteProvider(albumId));
+    final favoriteAsync = ref.watch(isFavoriteItemProvider(favoriteKey));
+    final wishlistAsync = ref.watch(isWishlistedProvider(favoriteKey));
+    final noteAsync = ref.watch(itemNoteProvider(noteKey));
     final profileAsync = ref.watch(currentProfileProvider);
     final activeLoanDetailsAsync = ref.watch(
       activeLoanDetailsForAlbumProvider(loanKey),
     );
 
     final favoriteActionState = ref.watch(
-      favoriteToggleControllerProvider(albumId),
+      favoriteItemToggleControllerProvider(favoriteKey),
     );
-    final noteActionState = ref.watch(noteEditorControllerProvider(albumId));
+    final wishlistActionState = ref.watch(
+      wishlistToggleControllerProvider(favoriteKey),
+    );
+    final noteActionState = ref.watch(itemNoteEditorControllerProvider(noteKey));
     final loanActionState = ref.watch(loanActionControllerProvider(loanKey));
 
     final title =
@@ -72,6 +78,10 @@ class AlbumDetailsPage extends ConsumerWidget {
             data: (value) => value,
             orElse: () => details.isFavorite,
           );
+          final isWishlisted = wishlistAsync.maybeWhen(
+            data: (value) => value,
+            orElse: () => false,
+          );
 
           final currentNote = noteAsync.maybeWhen(
             data: (note) => note?.note,
@@ -94,8 +104,9 @@ class AlbumDetailsPage extends ConsumerWidget {
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(albumDetailsProvider(key));
-              ref.invalidate(isFavoriteAlbumProvider(albumId));
-              ref.invalidate(albumNoteProvider(albumId));
+              ref.invalidate(isFavoriteItemProvider(favoriteKey));
+              ref.invalidate(isWishlistedProvider(favoriteKey));
+              ref.invalidate(itemNoteProvider(noteKey));
               ref.invalidate(activeLoanDetailsForAlbumProvider(loanKey));
               await ref.read(albumDetailsProvider(key).future);
             },
@@ -177,7 +188,7 @@ class AlbumDetailsPage extends ConsumerWidget {
                     try {
                       await ref
                           .read(
-                            favoriteToggleControllerProvider(albumId).notifier,
+                            favoriteItemToggleControllerProvider(favoriteKey).notifier,
                           )
                           .toggle(isFavorite: isFavorite);
 
@@ -202,13 +213,53 @@ class AlbumDetailsPage extends ConsumerWidget {
                   },
                 ),
                 const SizedBox(height: 12),
+                FilledButton.tonalIcon(
+                  onPressed: wishlistActionState.isLoading
+                      ? null
+                      : () async {
+                          try {
+                            await ref
+                                .read(
+                                  wishlistToggleControllerProvider(favoriteKey).notifier,
+                                )
+                                .toggle(isWishlisted: isWishlisted);
+
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  isWishlisted
+                                      ? 'Removido da wishlist'
+                                      : 'Adicionado à wishlist',
+                                ),
+                              ),
+                            );
+                          } catch (e) {
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Erro ao atualizar wishlist: $e'),
+                              ),
+                            );
+                          }
+                        },
+                  icon: wishlistActionState.isLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(isWishlisted ? Icons.push_pin : Icons.push_pin_outlined),
+                  label: Text(isWishlisted ? '📌 Na wishlist' : '📌 Adicionar à wishlist'),
+                ),
+                const SizedBox(height: 12),
                 NoteEditorCard(
                   initialNote: currentNote,
                   isBusy: noteActionState.isLoading,
                   onSave: (note) async {
                     try {
                       await ref
-                          .read(noteEditorControllerProvider(albumId).notifier)
+                          .read(itemNoteEditorControllerProvider(noteKey).notifier)
                           .save(note);
 
                       if (!context.mounted) return;
@@ -227,7 +278,7 @@ class AlbumDetailsPage extends ConsumerWidget {
                   onDelete: () async {
                     try {
                       await ref
-                          .read(noteEditorControllerProvider(albumId).notifier)
+                          .read(itemNoteEditorControllerProvider(noteKey).notifier)
                           .delete();
 
                       if (!context.mounted) return;
@@ -311,7 +362,7 @@ class _LoanSection extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.call_made),
-                label: Text('Marcar $itemTypeLabel como fora da prateleira'),
+                label: Text('Requisitar $itemTypeLabel'),
               ),
             ] else ...[
               if (isLoadingLoanData && activeLoan == null)

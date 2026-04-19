@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../albums/presentation/widgets/album_list_tile.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_error_state.dart';
+import '../../../favorites/application/favorite_providers.dart';
 import '../../application/artist_providers.dart';
 
 class ArtistDetailsPage extends ConsumerWidget {
@@ -17,9 +18,48 @@ class ArtistDetailsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final detailsAsync = ref.watch(artistDetailsProvider(artistId));
+    final isFavoriteArtistAsync = ref.watch(isFavoriteArtistProvider(artistId));
+    final isFavoriteArtist = isFavoriteArtistAsync.valueOrNull ?? false;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Detalhe do artista')),
+      appBar: AppBar(
+        title: const Text('Detalhe do artista'),
+        actions: [
+          IconButton(
+            tooltip: isFavoriteArtist
+                ? 'Remover artista dos favoritos'
+                : 'Adicionar artista aos favoritos',
+            onPressed: () async {
+              try {
+                if (isFavoriteArtist) {
+                  await ref.read(favoriteActionsProvider).removeArtist(artistId);
+                } else {
+                  await ref.read(favoriteActionsProvider).addArtist(artistId);
+                }
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      isFavoriteArtist
+                          ? '⭐ Artista removido dos favoritos'
+                          : '⭐ Artista adicionado aos favoritos',
+                    ),
+                  ),
+                );
+              } catch (e) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Erro ao atualizar artista favorito: $e')),
+                );
+              }
+            },
+            icon: Icon(
+              isFavoriteArtist ? Icons.star : Icons.star_border,
+              color: isFavoriteArtist ? Colors.amber : null,
+            ),
+          ),
+        ],
+      ),
       body: detailsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => AppErrorState(

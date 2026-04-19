@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/config/supabase_config.dart';
 import '../../core/utils/error_handler.dart';
+import '../models/item_type.dart';
 import '../models/user_album_note.dart';
 
 class NoteRepository {
@@ -8,6 +9,9 @@ class NoteRepository {
       : _client = client ?? SupabaseConfig.client;
 
   final SupabaseClient _client;
+
+  String _itemTypeToDb(ItemType itemType) =>
+      itemType == ItemType.cd ? 'cd' : 'vinyl';
 
   String _requireUserId() {
     final id = _client.auth.currentUser?.id;
@@ -17,8 +21,12 @@ class NoteRepository {
     return id;
   }
 
-  Future<UserAlbumNote?> getNoteForAlbum(int albumId) async {
+  Future<UserAlbumNote?> getNoteForAlbum(
+    int albumId, {
+    ItemType itemType = ItemType.cd,
+  }) async {
     final userId = _requireUserId();
+    final itemTypeDb = _itemTypeToDb(itemType);
 
     try {
       final data = await _client
@@ -26,7 +34,7 @@ class NoteRepository {
           .select('user_id, item_id, note, updated_at, item_type')
           .eq('user_id', userId)
           .eq('item_id', albumId)
-          .eq('item_type', 'cd')
+          .eq('item_type', itemTypeDb)
           .maybeSingle();
 
       if (data == null) return null;
@@ -39,8 +47,10 @@ class NoteRepository {
   Future<UserAlbumNote> upsertNote({
     required int albumId,
     required String note,
+    ItemType itemType = ItemType.cd,
   }) async {
     final userId = _requireUserId();
+    final itemTypeDb = _itemTypeToDb(itemType);
 
     try {
       final data = await _client
@@ -49,7 +59,7 @@ class NoteRepository {
             {
               'user_id': userId,
               'item_id': albumId,
-              'item_type': 'cd',
+              'item_type': itemTypeDb,
               'note': note,
             },
             onConflict: 'user_id,item_id,item_type',
@@ -63,8 +73,12 @@ class NoteRepository {
     }
   }
 
-  Future<void> deleteNote(int albumId) async {
+  Future<void> deleteNote(
+    int albumId, {
+    ItemType itemType = ItemType.cd,
+  }) async {
     final userId = _requireUserId();
+    final itemTypeDb = _itemTypeToDb(itemType);
 
     try {
       await _client
@@ -72,7 +86,7 @@ class NoteRepository {
           .delete()
           .eq('user_id', userId)
           .eq('item_id', albumId)
-          .eq('item_type', 'cd');
+          .eq('item_type', itemTypeDb);
     } catch (e) {
       throw AppException(message: 'Falha ao apagar nota: $e');
     }
