@@ -82,7 +82,7 @@ class ArtistDetailsPage extends ConsumerWidget {
                           final item = albums[index];
                           return AlbumListTile(
                             item: item,
-                            onTap: () => context.push('/albums/${item.albumId}'),
+                            onTap: () => context.push('/albums/${item.albumId}', extra: item.itemType),
                           );
                         },
                       ),
@@ -94,3 +94,6 @@ class ArtistDetailsPage extends ConsumerWidget {
     );
   }
 }
+
+
+

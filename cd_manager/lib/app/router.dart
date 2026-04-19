@@ -12,6 +12,7 @@ import '../features/artists/presentation/pages/artists_page.dart';
 import '../features/artists/presentation/pages/artist_details_page.dart';
 import '../features/loans/presentation/pages/loans_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
+import '../shared/models/item_type.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -60,7 +61,16 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                   body: Center(child: Text('ID de álbum inválido')),
                 );
               }
-              return AlbumDetailsPage(albumId: albumId);
+              
+              // Extract itemType from extra, default to CD
+              final itemType = state.extra is ItemType 
+                  ? state.extra as ItemType 
+                  : ItemType.cd;
+              
+              return AlbumDetailsPage(
+                albumId: albumId,
+                itemType: itemType,
+              );
             },
           ),
           GoRoute(

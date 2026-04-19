@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../shared/models/item_type.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_error_state.dart';
 import '../../../albums/presentation/widgets/album_cover.dart';
@@ -14,7 +15,7 @@ class LoansPage extends ConsumerWidget {
     final loansAsync = ref.watch(activeLoanListItemsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Fora da Prateleira')),
+      appBar: AppBar(title: const Text('Empréstimos')),
       body: loansAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => AppErrorState(
@@ -24,8 +25,8 @@ class LoansPage extends ConsumerWidget {
         data: (items) {
           if (items.isEmpty) {
             return const AppEmptyState(
-              title: 'Nenhum CD fora da prateleira',
-              subtitle: 'Quando um CD for marcado, vai aparecer aqui.',
+              title: 'Nenhum item emprestado',
+              subtitle: 'Quando um CD ou Vinil for emprestado, vai aparecer aqui.',
               icon: Icons.inventory_2_outlined,
             );
           }
@@ -48,7 +49,7 @@ class LoansPage extends ConsumerWidget {
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: InkWell(
-                    onTap: () => context.push('/albums/${item.albumId}'),
+                    onTap: () => context.push('/albums/${item.albumId}', extra: item.itemType),
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: Row(
@@ -64,10 +65,38 @@ class LoansPage extends ConsumerWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  item.title,
-                                  style: Theme.of(context).textTheme.titleMedium
-                                      ?.copyWith(fontWeight: FontWeight.w700),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        item.title,
+                                        style: Theme.of(context).textTheme.titleMedium
+                                            ?.copyWith(fontWeight: FontWeight.w700),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: item.itemType == ItemType.cd
+                                            ? Colors.blue.withValues(alpha: 0.2)
+                                            : Colors.purple.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        item.itemType == ItemType.cd ? 'CD' : 'Vinil',
+                                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                              color: item.itemType == ItemType.cd
+                                                  ? Colors.blue
+                                                  : Colors.purple,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 const SizedBox(height: 3),
                                 Text(
@@ -81,12 +110,12 @@ class LoansPage extends ConsumerWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 _InfoRow(
-                                  label: 'Quem marcou',
+                                  label: 'Quem requisitou',
                                   value: item.borrowerLabel,
                                 ),
                                 const SizedBox(height: 4),
                                 _InfoRow(
-                                  label: 'Quando marcou',
+                                  label: 'Quando requisitou',
                                   value: _formatDate(item.borrowedAt),
                                 ),
                               ],
@@ -154,3 +183,6 @@ class _InfoRow extends StatelessWidget {
     );
   }
 }
+
+
+

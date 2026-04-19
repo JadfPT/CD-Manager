@@ -6,6 +6,7 @@ import '../models/album_detail_view.dart';
 import '../models/album_list_item.dart';
 import '../models/album_loan.dart';
 import '../models/artist.dart';
+import '../models/item_type.dart';
 import '../models/user_album_note.dart';
 
 class AlbumRepository {
@@ -25,7 +26,7 @@ class AlbumRepository {
   Future<List<Album>> listAlbums({bool? onShelf}) async {
     try {
       var query = _client
-          .from('albums')
+          .from('cd_albums')
           .select('id, title, artist_id, on_shelf, cover_url, created_at');
 
       if (onShelf != null) {
@@ -44,9 +45,8 @@ class AlbumRepository {
     bool? onShelf,
   }) async {
     try {
-      var query = _client.from('albums').select(
-            'id, title, artist_id, on_shelf, cover_url, created_at, '
-            'artists!inner(id, name, genre_text, created_at)',
+      var query = _client.from('cd_albums').select(
+            'id, title, artist_id, on_shelf, cover_url, created_at',
           );
 
       if (onShelf != null) {
@@ -55,14 +55,34 @@ class AlbumRepository {
 
       final data = await query.order('id', ascending: true);
 
+      // Get all artist IDs from albums
+      final artistIds = data
+          .map((row) => _asInt(row['artist_id']))
+          .toSet()
+          .toList();
+
+      final artistMap = <int, Map<String, dynamic>>{};
+      if (artistIds.isNotEmpty) {
+        final artists = await _client
+            .from('artists')
+            .select('id, name, genre_text, created_at')
+            .inFilter('id', artistIds);
+
+        for (final artist in artists) {
+          final id = _asInt(artist['id']);
+          artistMap[id] = artist;
+        }
+      }
+
       var items = data.map((row) {
-        final artistMap = row['artists'] as Map<String, dynamic>;
+        final artistId = _asInt(row['artist_id']);
+        final artist = artistMap[artistId] ?? {};
         return AlbumListItem(
           albumId: _asInt(row['id']),
           title: row['title'] as String,
-          artistId: _asInt(row['artist_id']),
-          artistName: artistMap['name'] as String,
-          artistGenreText: artistMap['genre_text'] as String?,
+          artistId: artistId,
+          artistName: (artist['name'] as String?) ?? 'Unknown',
+          artistGenreText: artist['genre_text'] as String?,
           onShelf: row['on_shelf'] as bool,
           coverUrl: row['cover_url'] as String?,
           createdAt: _asDateTime(row['created_at']),
@@ -86,40 +106,54 @@ class AlbumRepository {
     }
   }
 
-  Future<AlbumDetailsViewData> getAlbumDetails(int albumId) async {
+  Future<AlbumDetailsViewData> getAlbumDetails(
+    int albumId, {
+    ItemType itemType = ItemType.cd,
+  }) async {
     final userId = _requireUserId();
+    final tableName = itemType == ItemType.cd ? 'cd_albums' : 'vinyl_albums';
+    final itemTypeStr = itemType == ItemType.cd ? 'cd' : 'vinyl';
 
     try {
       final albumRow = await _client
-          .from('albums')
+          .from(tableName)
           .select(
-            'id, title, artist_id, on_shelf, cover_url, created_at, '
-            'artists!inner(id, name, genre_text, created_at)',
+            'id, title, artist_id, on_shelf, cover_url, created_at',
           )
           .eq('id', albumId)
           .single();
 
       final album = Album.fromMap(albumRow);
-      final artist = Artist.fromMap(albumRow['artists'] as Map<String, dynamic>);
+
+      final artistRow = await _client
+          .from('artists')
+          .select('id, name, genre_text, created_at')
+          .eq('id', _asInt(albumRow['artist_id']))
+          .single();
+      final artist = Artist.fromMap(artistRow);
 
       final favoriteRow = await _client
-          .from('user_favorite_albums')
-          .select('album_id')
+          .from('user_favorite_items')
+          .select('item_id')
           .eq('user_id', userId)
-          .eq('album_id', albumId)
+          .eq('item_id', albumId)
+          .eq('item_type', itemTypeStr)
           .maybeSingle();
 
       final noteRow = await _client
-          .from('user_album_notes')
-          .select('user_id, album_id, note, updated_at')
+          .from('user_item_notes')
+          .select('user_id, item_id, note, updated_at, item_type')
           .eq('user_id', userId)
-          .eq('album_id', albumId)
+          .eq('item_id', albumId)
+          .eq('item_type', itemTypeStr)
           .maybeSingle();
 
       final loanRow = await _client
-          .from('album_loans')
-          .select('id, album_id, borrowed_by_user_id, borrowed_at, returned_at')
-          .eq('album_id', albumId)
+          .from('item_loans')
+          .select(
+              'id, item_id, borrowed_by_user_id, borrowed_at, returned_at, item_type')
+          .eq('item_id', albumId)
+          .eq('item_type', itemTypeStr)
           .isFilter('returned_at', null)
           .order('borrowed_at', ascending: false)
           .limit(1)
@@ -145,6 +179,134 @@ class AlbumRepository {
       );
     } catch (e) {
       throw AppException(message: 'Falha ao obter detalhe do álbum: $e');
+    }
+  }
+
+  Future<List<AlbumListItem>> listAllItemsUnified({
+    String? searchText,
+    bool? onShelf,
+    ItemType? itemTypeFilter,
+  }) async {
+    try {
+      final List<AlbumListItem> allItems = [];
+
+      // Fetch CDs if not filtering for vinyl
+      if (itemTypeFilter == null || itemTypeFilter == ItemType.cd) {
+        final cdData = await _client
+            .from('cd_albums')
+            .select('id, title, artist_id, on_shelf, cover_url, created_at');
+
+        final cdItems = cdData.where((row) {
+          if (onShelf != null && row['on_shelf'] != onShelf) return false;
+          return true;
+        }).toList();
+
+        // Get artist data for CDs
+        final cdArtistIds = cdItems
+            .map((row) => _asInt(row['artist_id']))
+            .toSet()
+            .toList();
+
+        final artistMap = <int, Map<String, dynamic>>{};
+        if (cdArtistIds.isNotEmpty) {
+          final artists = await _client
+              .from('artists')
+              .select('id, name, genre_text, created_at')
+              .inFilter('id', cdArtistIds);
+
+          for (final artist in artists) {
+            final id = _asInt(artist['id']);
+            artistMap[id] = artist;
+          }
+        }
+
+        for (final row in cdItems) {
+          final artistId = _asInt(row['artist_id']);
+          final artist = artistMap[artistId] ?? {};
+          allItems.add(AlbumListItem(
+            albumId: _asInt(row['id']),
+            title: row['title'] as String,
+            artistId: artistId,
+            artistName: (artist['name'] as String?) ?? 'Unknown',
+            artistGenreText: artist['genre_text'] as String?,
+            onShelf: row['on_shelf'] as bool,
+            coverUrl: row['cover_url'] as String?,
+            createdAt: _asDateTime(row['created_at']),
+            itemType: ItemType.cd,
+          ));
+        }
+      }
+
+      // Fetch Vinyls if not filtering for CD
+      if (itemTypeFilter == null || itemTypeFilter == ItemType.vinyl) {
+        final vinylData = await _client
+            .from('vinyl_albums')
+            .select('id, title, artist_id, on_shelf, cover_url, created_at');
+
+        final vinylItems = vinylData.where((row) {
+          if (onShelf != null && row['on_shelf'] != onShelf) return false;
+          return true;
+        }).toList();
+
+        // Get artist data for Vinyls
+        final vinylArtistIds = vinylItems
+            .map((row) => _asInt(row['artist_id']))
+            .toSet()
+            .toList();
+
+        final artistMap = <int, Map<String, dynamic>>{};
+        if (vinylArtistIds.isNotEmpty) {
+          final artists = await _client
+              .from('artists')
+              .select('id, name, genre_text, created_at')
+              .inFilter('id', vinylArtistIds);
+
+          for (final artist in artists) {
+            final id = _asInt(artist['id']);
+            artistMap[id] = artist;
+          }
+        }
+
+        for (final row in vinylItems) {
+          final artistId = _asInt(row['artist_id']);
+          final artist = artistMap[artistId] ?? {};
+          allItems.add(AlbumListItem(
+            albumId: _asInt(row['id']),
+            title: row['title'] as String,
+            artistId: artistId,
+            artistName: (artist['name'] as String?) ?? 'Unknown',
+            artistGenreText: artist['genre_text'] as String?,
+            onShelf: row['on_shelf'] as bool,
+            coverUrl: row['cover_url'] as String?,
+            createdAt: _asDateTime(row['created_at']),
+            itemType: ItemType.vinyl,
+          ));
+        }
+      }
+
+      // Apply search filter
+      var filteredItems = allItems;
+      final normalizedSearch = searchText?.trim().toLowerCase();
+      if (normalizedSearch != null && normalizedSearch.isNotEmpty) {
+        filteredItems = filteredItems
+            .where(
+              (item) =>
+                  item.title.toLowerCase().contains(normalizedSearch) ||
+                  item.artistName.toLowerCase().contains(normalizedSearch),
+            )
+            .toList();
+      }
+
+      // Sort by item type, then by ID
+      filteredItems.sort((a, b) {
+        final typeCompare = a.itemType.value.compareTo(b.itemType.value);
+        if (typeCompare != 0) return typeCompare;
+        return a.albumId.compareTo(b.albumId);
+      });
+
+      return filteredItems;
+    } catch (e) {
+      throw AppException(message: 'Falha ao obter coleção: $e');
     }
   }
 

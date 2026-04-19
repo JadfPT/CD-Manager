@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/models/album_list_item.dart';
+import '../../../shared/models/item_type.dart';
 import 'album_providers.dart';
 
 enum AlbumShelfFilter {
@@ -8,14 +9,24 @@ enum AlbumShelfFilter {
   outsideShelf,
 }
 
+enum ItemTypeFilter {
+  all,
+  cd,
+  vinyl,
+}
+
 final albumSearchQueryProvider = StateProvider<String>((ref) => '');
 
 final albumShelfFilterProvider =
     StateProvider<AlbumShelfFilter>((ref) => AlbumShelfFilter.all);
 
+final itemTypeFilterProvider =
+    StateProvider<ItemTypeFilter>((ref) => ItemTypeFilter.all);
+
 final currentAlbumFiltersProvider = Provider<AlbumFilters>((ref) {
   final query = ref.watch(albumSearchQueryProvider);
   final shelfFilter = ref.watch(albumShelfFilterProvider);
+  final typeFilter = ref.watch(itemTypeFilterProvider);
 
   bool? onShelf;
   switch (shelfFilter) {
@@ -30,9 +41,23 @@ final currentAlbumFiltersProvider = Provider<AlbumFilters>((ref) {
       break;
   }
 
+  ItemType? itemType;
+  switch (typeFilter) {
+    case ItemTypeFilter.all:
+      itemType = null;
+      break;
+    case ItemTypeFilter.cd:
+      itemType = ItemType.cd;
+      break;
+    case ItemTypeFilter.vinyl:
+      itemType = ItemType.vinyl;
+      break;
+  }
+
   return AlbumFilters(
     searchText: query,
     onShelf: onShelf,
+    itemType: itemType,
   );
 });
 

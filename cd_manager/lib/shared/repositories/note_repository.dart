@@ -22,10 +22,11 @@ class NoteRepository {
 
     try {
       final data = await _client
-          .from('user_album_notes')
-          .select('user_id, album_id, note, updated_at')
+          .from('user_item_notes')
+          .select('user_id, item_id, note, updated_at, item_type')
           .eq('user_id', userId)
-          .eq('album_id', albumId)
+          .eq('item_id', albumId)
+          .eq('item_type', 'cd')
           .maybeSingle();
 
       if (data == null) return null;
@@ -43,16 +44,17 @@ class NoteRepository {
 
     try {
       final data = await _client
-          .from('user_album_notes')
+          .from('user_item_notes')
           .upsert(
             {
               'user_id': userId,
-              'album_id': albumId,
+              'item_id': albumId,
+              'item_type': 'cd',
               'note': note,
             },
-            onConflict: 'user_id,album_id',
+            onConflict: 'user_id,item_id,item_type',
           )
-          .select('user_id, album_id, note, updated_at')
+          .select('user_id, item_id, note, updated_at, item_type')
           .single();
 
       return UserAlbumNote.fromMap(data);
@@ -66,10 +68,11 @@ class NoteRepository {
 
     try {
       await _client
-          .from('user_album_notes')
+          .from('user_item_notes')
           .delete()
           .eq('user_id', userId)
-          .eq('album_id', albumId);
+          .eq('item_id', albumId)
+          .eq('item_type', 'cd');
     } catch (e) {
       throw AppException(message: 'Falha ao apagar nota: $e');
     }

@@ -1,3 +1,5 @@
+import 'item_type.dart';
+
 class Album {
   const Album({
     required this.id,
@@ -14,6 +16,9 @@ class Album {
   final bool onShelf;
   final String? coverUrl;
   final DateTime? createdAt;
+
+  // Implicitly CD type since cd_albums only contains CDs
+  ItemType get itemType => ItemType.cd;
 
   factory Album.fromMap(Map<String, dynamic> map) {
     return Album(
@@ -49,3 +54,4 @@ class Album {
     return DateTime.parse(value.toString());
   }
 }
+

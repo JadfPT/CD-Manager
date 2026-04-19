@@ -3,6 +3,7 @@ import '../../core/config/supabase_config.dart';
 import '../../core/utils/error_handler.dart';
 import '../models/album_list_item.dart';
 import '../models/artist.dart';
+import '../models/item_type.dart';
 
 class ArtistRepository {
   ArtistRepository({SupabaseClient? client})
@@ -40,28 +41,61 @@ class ArtistRepository {
 
   Future<List<AlbumListItem>> listAlbumsByArtistId(int artistId) async {
     try {
-      final data = await _client
-          .from('albums')
+      // Buscar CDs
+      final cdData = await _client
+          .from('cd_albums')
           .select(
-            'id, title, artist_id, on_shelf, cover_url, created_at, '
-            'artists!inner(id, name, genre_text, created_at)',
+            'id, title, artist_id, on_shelf, cover_url, created_at',
           )
           .eq('artist_id', artistId)
           .order('id', ascending: true);
 
-      return data.map((row) {
-        final artistMap = row['artists'] as Map<String, dynamic>;
+      // Buscar Vinis
+      final vinylData = await _client
+          .from('vinyl_albums')
+          .select(
+            'id, title, artist_id, on_shelf, cover_url, created_at',
+          )
+          .eq('artist_id', artistId)
+          .order('id', ascending: true);
+
+      final artist = await getArtistById(artistId);
+
+      // Processar CDs
+      final cdItems = cdData.map((row) {
         return AlbumListItem(
           albumId: _asInt(row['id']),
           title: row['title'] as String,
           artistId: _asInt(row['artist_id']),
-          artistName: artistMap['name'] as String,
-          artistGenreText: artistMap['genre_text'] as String?,
+          artistName: artist?.name ?? 'Unknown',
+          artistGenreText: artist?.genreText,
           onShelf: row['on_shelf'] as bool,
           coverUrl: row['cover_url'] as String?,
           createdAt: _asDateTime(row['created_at']),
+          itemType: ItemType.cd,
         );
       }).toList();
+
+      // Processar Vinis
+      final vinylItems = vinylData.map((row) {
+        return AlbumListItem(
+          albumId: _asInt(row['id']),
+          title: row['title'] as String,
+          artistId: _asInt(row['artist_id']),
+          artistName: artist?.name ?? 'Unknown',
+          artistGenreText: artist?.genreText,
+          onShelf: row['on_shelf'] as bool,
+          coverUrl: row['cover_url'] as String?,
+          createdAt: _asDateTime(row['created_at']),
+          itemType: ItemType.vinyl,
+        );
+      }).toList();
+
+      // Combinar e ordenar por ID
+      final allItems = [...cdItems, ...vinylItems];
+      allItems.sort((a, b) => a.albumId.compareTo(b.albumId));
+
+      return allItems;
     } catch (e) {
       throw AppException(message: 'Falha ao listar álbuns do artista: $e');
     }

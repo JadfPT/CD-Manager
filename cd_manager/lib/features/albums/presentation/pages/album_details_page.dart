@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/config/supabase_config.dart';
 import '../../../../shared/models/album_loan.dart';
+import '../../../../shared/models/item_type.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_error_state.dart';
 import '../../../favorites/application/favorite_providers.dart';
@@ -18,38 +19,50 @@ import '../widgets/favorite_button.dart';
 import '../widgets/note_editor_card.dart';
 
 class AlbumDetailsPage extends ConsumerWidget {
-  const AlbumDetailsPage({required this.albumId, super.key});
+  const AlbumDetailsPage({
+    required this.albumId,
+    this.itemType = ItemType.cd,
+    super.key,
+  });
 
   final int albumId;
+  final ItemType itemType;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final detailsAsync = ref.watch(albumDetailsProvider(albumId));
+    final key = AlbumDetailsKey(albumId: albumId, itemType: itemType);
+    final loanKey = LoanItemKey(albumId: albumId, itemType: itemType);
+    final detailsAsync = ref.watch(albumDetailsProvider(key));
     final favoriteAsync = ref.watch(isFavoriteAlbumProvider(albumId));
     final noteAsync = ref.watch(albumNoteProvider(albumId));
     final profileAsync = ref.watch(currentProfileProvider);
     final activeLoanDetailsAsync = ref.watch(
-      activeLoanDetailsForAlbumProvider(albumId),
+      activeLoanDetailsForAlbumProvider(loanKey),
     );
 
     final favoriteActionState = ref.watch(
       favoriteToggleControllerProvider(albumId),
     );
     final noteActionState = ref.watch(noteEditorControllerProvider(albumId));
-    final loanActionState = ref.watch(loanActionControllerProvider(albumId));
+    final loanActionState = ref.watch(loanActionControllerProvider(loanKey));
+
+    final title =
+        itemType == ItemType.cd ? 'Detalhe do CD' : 'Detalhe do Vinil';
+    final notFoundTitle =
+        itemType == ItemType.cd ? 'CD não encontrado' : 'Vinil não encontrado';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Detalhe do CD')),
+      appBar: AppBar(title: Text(title)),
       body: detailsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stackTrace) => AppErrorState(
           message: error.toString(),
-          onRetry: () => ref.invalidate(albumDetailsProvider(albumId)),
+          onRetry: () => ref.invalidate(albumDetailsProvider(key)),
         ),
         data: (details) {
           if (details.album.id != albumId) {
-            return const AppEmptyState(
-              title: 'CD não encontrado',
+            return AppEmptyState(
+              title: notFoundTitle,
               subtitle: 'Este álbum pode ter sido removido.',
               icon: Icons.album_outlined,
             );
@@ -80,11 +93,11 @@ class AlbumDetailsPage extends ConsumerWidget {
 
           return RefreshIndicator(
             onRefresh: () async {
-              ref.invalidate(albumDetailsProvider(albumId));
+              ref.invalidate(albumDetailsProvider(key));
               ref.invalidate(isFavoriteAlbumProvider(albumId));
               ref.invalidate(albumNoteProvider(albumId));
-              ref.invalidate(activeLoanDetailsForAlbumProvider(albumId));
-              await ref.read(albumDetailsProvider(albumId).future);
+              ref.invalidate(activeLoanDetailsForAlbumProvider(loanKey));
+              await ref.read(albumDetailsProvider(key).future);
             },
             child: ListView(
               padding: const EdgeInsets.all(16),
@@ -94,6 +107,7 @@ class AlbumDetailsPage extends ConsumerWidget {
                 AlbumMetaSection(details: details),
                 const SizedBox(height: 12),
                 _LoanSection(
+                  itemType: itemType,
                   onShelf: details.album.onShelf,
                   activeLoan: activeLoan,
                   borrowerLabel: borrowerLabel,
@@ -103,38 +117,54 @@ class AlbumDetailsPage extends ConsumerWidget {
                   onBorrow: () async {
                     try {
                       await ref
-                          .read(loanActionControllerProvider(albumId).notifier)
+                          .read(loanActionControllerProvider(loanKey).notifier)
                           .borrow();
 
                       if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('CD marcado como fora da prateleira'),
+                        SnackBar(
+                          content: Text(
+                            itemType == ItemType.cd
+                                ? 'CD marcado como fora da prateleira'
+                                : 'Vinil marcado como fora da prateleira',
+                          ),
                         ),
                       );
                     } catch (e) {
                       if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Erro ao requisitar CD: $e')),
+                        SnackBar(
+                          content: Text(
+                            'Erro ao requisitar ${itemType == ItemType.cd ? 'CD' : 'Vinil'}: $e',
+                          ),
+                        ),
                       );
                     }
                   },
                   onReturn: () async {
                     try {
                       await ref
-                          .read(loanActionControllerProvider(albumId).notifier)
+                          .read(loanActionControllerProvider(loanKey).notifier)
                           .returnAlbum();
 
                       if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('CD devolvido com sucesso'),
+                        SnackBar(
+                          content: Text(
+                            itemType == ItemType.cd
+                                ? 'CD devolvido com sucesso'
+                                : 'Vinil devolvido com sucesso',
+                          ),
                         ),
                       );
                     } catch (e) {
                       if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Erro ao devolver CD: $e')),
+                        SnackBar(
+                          content: Text(
+                            'Erro ao devolver ${itemType == ItemType.cd ? 'CD' : 'Vinil'}: $e',
+                          ),
+                        ),
                       );
                     }
                   },
@@ -225,6 +255,7 @@ class AlbumDetailsPage extends ConsumerWidget {
 
 class _LoanSection extends StatelessWidget {
   const _LoanSection({
+    required this.itemType,
     required this.onShelf,
     required this.activeLoan,
     required this.borrowerLabel,
@@ -235,6 +266,7 @@ class _LoanSection extends StatelessWidget {
     required this.onReturn,
   });
 
+  final ItemType itemType;
   final bool onShelf;
   final AlbumLoan? activeLoan;
   final String? borrowerLabel;
@@ -246,6 +278,8 @@ class _LoanSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final itemTypeLabel = itemType == ItemType.cd ? 'CD' : 'Vinil';
+
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
@@ -260,7 +294,7 @@ class _LoanSection extends StatelessWidget {
             const SizedBox(height: 10),
             if (onShelf) ...[
               Text(
-                'Este CD está na prateleira.',
+                'Este $itemTypeLabel está na prateleira.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 12),
@@ -277,7 +311,7 @@ class _LoanSection extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.call_made),
-                label: const Text('Marcar como fora da prateleira'),
+                label: Text('Marcar $itemTypeLabel como fora da prateleira'),
               ),
             ] else ...[
               if (isLoadingLoanData && activeLoan == null)
@@ -297,7 +331,7 @@ class _LoanSection extends StatelessWidget {
                 ),
               ] else
                 Text(
-                  'CD fora da prateleira, sem detalhe de loan ativo disponível.',
+                  '$itemTypeLabel fora da prateleira, sem detalhe de loan ativo disponível.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               const SizedBox(height: 12),
@@ -319,7 +353,7 @@ class _LoanSection extends StatelessWidget {
                 )
               else
                 Text(
-                  'Só o utilizador que marcou ou um admin pode devolver este CD.',
+                  'Só o utilizador que marcou ou um admin pode devolver este $itemTypeLabel.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),

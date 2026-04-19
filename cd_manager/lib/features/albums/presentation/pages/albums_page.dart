@@ -33,9 +33,10 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
   Widget build(BuildContext context) {
     final albumsAsync = ref.watch(visibleAlbumsProvider);
     final filter = ref.watch(albumShelfFilterProvider);
+    final typeFilter = ref.watch(itemTypeFilterProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('CDs')),
+      appBar: AppBar(title: const Text('Coleção')),
       body: Column(
         children: [
           Padding(
@@ -47,6 +48,30 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
                 ref.read(albumSearchQueryProvider.notifier).state = value;
                 setState(() {});
               },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: SegmentedButton<ItemTypeFilter>(
+              segments: const [
+                ButtonSegment(
+                  value: ItemTypeFilter.all,
+                  label: Text('Todos'),
+                ),
+                ButtonSegment(
+                  value: ItemTypeFilter.cd,
+                  label: Text('CDs'),
+                ),
+                ButtonSegment(
+                  value: ItemTypeFilter.vinyl,
+                  label: Text('Vinis'),
+                ),
+              ],
+              selected: {typeFilter},
+              onSelectionChanged: (selection) {
+                ref.read(itemTypeFilterProvider.notifier).state = selection.first;
+              },
+              showSelectedIcon: false,
             ),
           ),
           Padding(
@@ -101,7 +126,7 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
                         SizedBox(
                           height: MediaQuery.of(context).size.height * 0.6,
                           child: const AppEmptyState(
-                            title: 'Sem CDs para mostrar',
+                            title: 'Sem itens para mostrar',
                             subtitle: 'Ajusta os filtros ou pesquisa.',
                             icon: Icons.album_outlined,
                           ),
@@ -120,7 +145,7 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
                       final item = items[index];
                       return AlbumListTile(
                         item: item,
-                        onTap: () => context.push('/albums/${item.albumId}'),
+                        onTap: () => context.push('/albums/${item.albumId}', extra: item.itemType),
                       );
                     },
                   );
@@ -133,3 +158,7 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
     );
   }
 }
+
+
+
+

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/models/album_list_item.dart';
+import '../../../../shared/models/item_type.dart';
 import 'album_cover.dart';
 import 'shelf_status_chip.dart';
 
@@ -71,6 +72,27 @@ class AlbumListTile extends StatelessWidget {
                           style: Theme.of(context).textTheme.labelMedium?.copyWith(
                                 color: colors.onSurfaceVariant,
                               ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: item.itemType == ItemType.cd
+                                ? Colors.blue.withValues(alpha: 0.2)
+                                : Colors.purple.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            item.itemType == ItemType.cd ? 'CD' : 'Vinil',
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                  color: item.itemType == ItemType.cd
+                                      ? Colors.blue
+                                      : Colors.purple,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
                         ),
                         ShelfStatusChip(onShelf: item.onShelf),
                       ],

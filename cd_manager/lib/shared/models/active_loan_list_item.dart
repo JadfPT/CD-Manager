@@ -1,3 +1,5 @@
+import 'item_type.dart';
+
 class ActiveLoanListItem {
   const ActiveLoanListItem({
     required this.loanId,
@@ -9,6 +11,7 @@ class ActiveLoanListItem {
     this.coverUrl,
     this.borrowerDisplayName,
     this.borrowerUsername,
+    this.itemType = ItemType.cd,
   });
 
   final int loanId;
@@ -20,6 +23,7 @@ class ActiveLoanListItem {
   final String? coverUrl;
   final String? borrowerDisplayName;
   final String? borrowerUsername;
+  final ItemType itemType;
 
   String get borrowerLabel {
     if (borrowerDisplayName != null && borrowerDisplayName!.trim().isNotEmpty) {

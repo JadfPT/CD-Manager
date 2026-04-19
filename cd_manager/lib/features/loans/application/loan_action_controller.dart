@@ -2,21 +2,21 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'loan_providers.dart';
 
 final loanActionControllerProvider =
-    StateNotifierProvider.family<LoanActionController, AsyncValue<void>, int>(
-      (ref, albumId) => LoanActionController(ref, albumId),
+    StateNotifierProvider.family<LoanActionController, AsyncValue<void>, LoanItemKey>(
+      (ref, key) => LoanActionController(ref, key),
     );
 
 class LoanActionController extends StateNotifier<AsyncValue<void>> {
-  LoanActionController(this._ref, this._albumId) : super(const AsyncData(null));
+  LoanActionController(this._ref, this._key) : super(const AsyncData(null));
 
   final Ref _ref;
-  final int _albumId;
+  final LoanItemKey _key;
 
   Future<void> borrow() async {
     state = const AsyncLoading();
 
     try {
-      await _ref.read(loanActionsProvider).borrowAlbum(_albumId);
+      await _ref.read(loanActionsProvider).borrowAlbum(_key.albumId, _key.itemType);
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);
@@ -28,7 +28,7 @@ class LoanActionController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncLoading();
 
     try {
-      await _ref.read(loanActionsProvider).returnAlbum(_albumId);
+      await _ref.read(loanActionsProvider).returnAlbum(_key.albumId, _key.itemType);
       state = const AsyncData(null);
     } catch (error, stackTrace) {
       state = AsyncError(error, stackTrace);

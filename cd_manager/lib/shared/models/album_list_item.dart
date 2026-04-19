@@ -1,3 +1,5 @@
+import 'item_type.dart';
+
 class AlbumListItem {
   const AlbumListItem({
     required this.albumId,
@@ -11,6 +13,7 @@ class AlbumListItem {
     this.isFavorite = false,
     this.hasUserNote = false,
     this.loanId,
+    this.itemType = ItemType.cd,
   });
 
   final int albumId;
@@ -24,11 +27,13 @@ class AlbumListItem {
   final bool isFavorite;
   final bool hasUserNote;
   final int? loanId;
+  final ItemType itemType;
 
   AlbumListItem copyWith({
     bool? isFavorite,
     bool? hasUserNote,
     int? loanId,
+    ItemType? itemType,
   }) {
     return AlbumListItem(
       albumId: albumId,
@@ -42,6 +47,7 @@ class AlbumListItem {
       isFavorite: isFavorite ?? this.isFavorite,
       hasUserNote: hasUserNote ?? this.hasUserNote,
       loanId: loanId ?? this.loanId,
+      itemType: itemType ?? this.itemType,
     );
   }
 }

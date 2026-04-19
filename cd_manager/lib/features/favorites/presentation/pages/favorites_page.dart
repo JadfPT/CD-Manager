@@ -61,7 +61,7 @@ class FavoritesPage extends ConsumerWidget {
                 final item = favorites[index];
                 return AlbumListTile(
                   item: item,
-                  onTap: () => context.push('/albums/${item.albumId}'),
+                  onTap: () => context.push('/albums/${item.albumId}', extra: item.itemType),
                   trailing: IconButton(
                     tooltip: 'Remover dos favoritos',
                     icon: const Icon(Icons.favorite),
@@ -89,3 +89,6 @@ class FavoritesPage extends ConsumerWidget {
     );
   }
 }
+
+
+

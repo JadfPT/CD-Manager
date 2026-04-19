@@ -28,7 +28,7 @@ class Shell extends StatelessWidget {
         selectedIndex: selectedIndex,
         onDestinationSelected: (index) => context.go(_routes[index]),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.album), label: 'CDs'),
+          NavigationDestination(icon: Icon(Icons.album), label: 'Coleção'),
           NavigationDestination(icon: Icon(Icons.favorite), label: 'Favoritos'),
           NavigationDestination(icon: Icon(Icons.person), label: 'Artistas'),
           NavigationDestination(icon: Icon(Icons.logout), label: 'Fora'),

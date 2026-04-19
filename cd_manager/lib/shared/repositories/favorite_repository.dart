@@ -23,10 +23,11 @@ class FavoriteRepository {
 
     try {
       final data = await _client
-          .from('user_favorite_albums')
-          .select('user_id, album_id, created_at')
+          .from('user_favorite_items')
+          .select('user_id, item_id, created_at, item_type')
           .eq('user_id', userId)
-          .order('album_id', ascending: true);
+          .eq('item_type', 'cd')
+          .order('item_id', ascending: true);
 
       return data.map((row) => UserFavoriteAlbum.fromMap(row)).toList();
     } catch (e) {
@@ -44,30 +45,55 @@ class FavoriteRepository {
 
     try {
       final data = await _client
-          .from('user_favorite_albums')
-          .select(
-            'album_id, '
-            'albums!inner('
-            'id, title, artist_id, on_shelf, cover_url, created_at, '
-            'artists!inner(id, name, genre_text, created_at)'
-            ')',
-          )
+          .from('user_favorite_items')
+          .select('item_id')
           .eq('user_id', userId)
-          .order('album_id', ascending: true);
+          .eq('item_type', 'cd')
+          .order('item_id', ascending: true);
 
-      return data.map((row) {
-        final albumMap = row['albums'] as Map<String, dynamic>;
-        final artistMap = albumMap['artists'] as Map<String, dynamic>;
+      final albumIds = data
+          .map((row) => _asInt(row['item_id']))
+          .toSet()
+          .toList();
+
+      if (albumIds.isEmpty) return [];
+
+      final albums = await _client
+          .from('cd_albums')
+          .select('id, title, artist_id, on_shelf, cover_url, created_at')
+          .inFilter('id', albumIds);
+
+      final artistIds = albums
+          .map((row) => _asInt(row['artist_id']))
+          .toSet()
+          .toList();
+
+      final artistMap = <int, Map<String, dynamic>>{};
+      if (artistIds.isNotEmpty) {
+        final artists = await _client
+            .from('artists')
+            .select('id, name, genre_text, created_at')
+            .inFilter('id', artistIds);
+
+        for (final artist in artists) {
+          final id = _asInt(artist['id']);
+          artistMap[id] = artist;
+        }
+      }
+
+      return albums.map((row) {
+        final artistId = _asInt(row['artist_id']);
+        final artist = artistMap[artistId] ?? {};
 
         return AlbumListItem(
-          albumId: _asInt(albumMap['id']),
-          title: albumMap['title'] as String,
-          artistId: _asInt(albumMap['artist_id']),
-          artistName: artistMap['name'] as String,
-          artistGenreText: artistMap['genre_text'] as String?,
-          onShelf: albumMap['on_shelf'] as bool,
-          coverUrl: albumMap['cover_url'] as String?,
-          createdAt: _asDateTime(albumMap['created_at']),
+          albumId: _asInt(row['id']),
+          title: row['title'] as String,
+          artistId: artistId,
+          artistName: (artist['name'] as String?) ?? 'Unknown',
+          artistGenreText: artist['genre_text'] as String?,
+          onShelf: row['on_shelf'] as bool,
+          coverUrl: row['cover_url'] as String?,
+          createdAt: _asDateTime(row['created_at']),
           isFavorite: true,
         );
       }).toList();
@@ -81,10 +107,11 @@ class FavoriteRepository {
 
     try {
       final data = await _client
-          .from('user_favorite_albums')
-          .select('album_id')
+          .from('user_favorite_items')
+          .select('item_id')
           .eq('user_id', userId)
-          .eq('album_id', albumId)
+          .eq('item_id', albumId)
+          .eq('item_type', 'cd')
           .maybeSingle();
 
       return data != null;
@@ -97,9 +124,10 @@ class FavoriteRepository {
     final userId = _requireUserId();
 
     try {
-      await _client.from('user_favorite_albums').insert({
+      await _client.from('user_favorite_items').insert({
         'user_id': userId,
-        'album_id': albumId,
+        'item_id': albumId,
+        'item_type': 'cd',
       });
     } catch (e) {
       throw AppException(message: 'Falha ao adicionar favorito: $e');
@@ -111,10 +139,11 @@ class FavoriteRepository {
 
     try {
       await _client
-          .from('user_favorite_albums')
+          .from('user_favorite_items')
           .delete()
           .eq('user_id', userId)
-          .eq('album_id', albumId);
+          .eq('item_id', albumId)
+          .eq('item_type', 'cd');
     } catch (e) {
       throw AppException(message: 'Falha ao remover favorito: $e');
     }

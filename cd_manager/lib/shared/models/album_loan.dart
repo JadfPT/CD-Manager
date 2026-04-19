@@ -1,3 +1,5 @@
+import 'item_type.dart';
+
 class AlbumLoan {
   const AlbumLoan({
     required this.id,
@@ -5,6 +7,7 @@ class AlbumLoan {
     required this.borrowedByUserId,
     required this.borrowedAt,
     required this.returnedAt,
+    this.itemType = ItemType.cd,
   });
 
   final int id;
@@ -12,26 +15,31 @@ class AlbumLoan {
   final String borrowedByUserId;
   final DateTime borrowedAt;
   final DateTime? returnedAt;
+  final ItemType itemType;
 
   bool get isActive => returnedAt == null;
 
   factory AlbumLoan.fromMap(Map<String, dynamic> map) {
     return AlbumLoan(
       id: _asInt(map['id']),
-      albumId: _asInt(map['album_id']),
+      albumId: _asInt(map['item_id']),
       borrowedByUserId: map['borrowed_by_user_id'] as String,
       borrowedAt: _asDateTime(map['borrowed_at'])!,
       returnedAt: _asDateTime(map['returned_at']),
+      itemType: (map['item_type'] as String?) == 'vinyl'
+          ? ItemType.vinyl
+          : ItemType.cd,
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'album_id': albumId,
+      'item_id': albumId,
       'borrowed_by_user_id': borrowedByUserId,
       'borrowed_at': borrowedAt.toIso8601String(),
       'returned_at': returnedAt?.toIso8601String(),
+      'item_type': itemType == ItemType.cd ? 'cd' : 'vinyl',
     };
   }
 
