@@ -16,6 +16,7 @@ import '../features/settings/presentation/pages/settings_page.dart';
 import '../features/random/presentation/pages/random_page.dart';
 import '../features/admin/presentation/pages/admin_item_form_page.dart';
 import '../features/admin/presentation/pages/admin_artist_form_page.dart';
+import '../features/admin/presentation/pages/wishlist_admin_page.dart';
 import '../shared/models/item_type.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
@@ -136,6 +137,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
               }
               return AdminArtistFormPage.edit(artistId: artistId);
             },
+          ),
+          GoRoute(
+            path: '/admin/wishlist',
+            builder: (context, state) => const WishlistAdminPage(),
           ),
           GoRoute(
             path: '/admin/items/:itemType/:itemId/edit',

@@ -294,6 +294,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 ),
               ),
               const SizedBox(height: 12),
+              if (profile?.isAdmin ?? false) ...[
+                FilledButton.tonalIcon(
+                  onPressed: () => context.push('/admin/wishlist'),
+                  icon: const Icon(Icons.admin_panel_settings_outlined),
+                  label: const Text('Wishlist Admin'),
+                ),
+                const SizedBox(height: 12),
+              ],
               FilledButton.tonalIcon(
                 onPressed: () => context.push('/settings'),
                 icon: const Icon(Icons.settings_outlined),

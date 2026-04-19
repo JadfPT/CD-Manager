@@ -37,7 +37,6 @@ class AlbumDetailsPage extends ConsumerWidget {
     final noteKey = NoteItemKey(itemId: albumId, itemType: itemType);
     final detailsAsync = ref.watch(albumDetailsProvider(key));
     final favoriteAsync = ref.watch(isFavoriteItemProvider(favoriteKey));
-    final wishlistAsync = ref.watch(isWishlistedProvider(favoriteKey));
     final noteAsync = ref.watch(itemNoteProvider(noteKey));
     final profileAsync = ref.watch(currentProfileProvider);
     final activeLoanDetailsAsync = ref.watch(
@@ -46,9 +45,6 @@ class AlbumDetailsPage extends ConsumerWidget {
 
     final favoriteActionState = ref.watch(
       favoriteItemToggleControllerProvider(favoriteKey),
-    );
-    final wishlistActionState = ref.watch(
-      wishlistToggleControllerProvider(favoriteKey),
     );
     final noteActionState = ref.watch(itemNoteEditorControllerProvider(noteKey));
     final loanActionState = ref.watch(loanActionControllerProvider(loanKey));
@@ -88,11 +84,6 @@ class AlbumDetailsPage extends ConsumerWidget {
             data: (value) => value,
             orElse: () => details.isFavorite,
           );
-          final isWishlisted = wishlistAsync.maybeWhen(
-            data: (value) => value,
-            orElse: () => false,
-          );
-
           final currentNote = noteAsync.maybeWhen(
             data: (note) => note?.note,
             orElse: () => details.userNote?.note,
@@ -115,7 +106,6 @@ class AlbumDetailsPage extends ConsumerWidget {
             onRefresh: () async {
               ref.invalidate(albumDetailsProvider(key));
               ref.invalidate(isFavoriteItemProvider(favoriteKey));
-              ref.invalidate(isWishlistedProvider(favoriteKey));
               ref.invalidate(itemNoteProvider(noteKey));
               ref.invalidate(activeLoanDetailsForAlbumProvider(loanKey));
               await ref.read(albumDetailsProvider(key).future);
@@ -236,46 +226,6 @@ class AlbumDetailsPage extends ConsumerWidget {
                       );
                     }
                   },
-                ),
-                const SizedBox(height: 12),
-                FilledButton.tonalIcon(
-                  onPressed: wishlistActionState.isLoading
-                      ? null
-                      : () async {
-                          try {
-                            await ref
-                                .read(
-                                  wishlistToggleControllerProvider(favoriteKey).notifier,
-                                )
-                                .toggle(isWishlisted: isWishlisted);
-
-                            if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  isWishlisted
-                                      ? 'Removido da wishlist'
-                                      : 'Adicionado à wishlist',
-                                ),
-                              ),
-                            );
-                          } catch (e) {
-                            if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Erro ao atualizar wishlist: $e'),
-                              ),
-                            );
-                          }
-                        },
-                  icon: wishlistActionState.isLoading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Icon(isWishlisted ? Icons.push_pin : Icons.push_pin_outlined),
-                  label: Text(isWishlisted ? '📌 Na wishlist' : '📌 Adicionar à wishlist'),
                 ),
                 const SizedBox(height: 12),
                 NoteEditorCard(

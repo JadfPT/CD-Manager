@@ -3,6 +3,7 @@ import '../../../shared/models/album_list_item.dart';
 import '../../../shared/models/artist.dart';
 import '../../../shared/models/item_type.dart';
 import '../../../shared/models/user_favorite_album.dart';
+import '../../../shared/models/wishlist_item.dart';
 import '../../../shared/repositories/favorite_repository.dart';
 
 class FavoriteItemKey {
@@ -55,9 +56,14 @@ final favoriteArtistsProvider = FutureProvider<List<Artist>>((ref) {
   return repository.listFavoriteArtistsForCurrentUser();
 });
 
-final wishlistProvider = FutureProvider<List<AlbumListItem>>((ref) {
+final wishlistProvider = FutureProvider<List<WishlistItem>>((ref) {
   final repository = ref.watch(favoriteRepositoryProvider);
-  return repository.listWishlistItemsForCurrentUser();
+  return repository.listWishlistEntriesForCurrentUser();
+});
+
+final adminWishlistProvider = FutureProvider<List<WishlistItem>>((ref) {
+  final repository = ref.watch(favoriteRepositoryProvider);
+  return repository.listAllWishlistEntriesForAdmin();
 });
 
 final isFavoriteAlbumProvider = FutureProvider.family<bool, int>((ref, albumId) {
@@ -74,12 +80,6 @@ final isFavoriteItemProvider =
 final isFavoriteArtistProvider = FutureProvider.family<bool, int>((ref, artistId) {
   final repository = ref.watch(favoriteRepositoryProvider);
   return repository.isFavoriteArtist(artistId);
-});
-
-final isWishlistedProvider =
-    FutureProvider.family<bool, FavoriteItemKey>((ref, key) {
-  final repository = ref.watch(favoriteRepositoryProvider);
-  return repository.isWishlisted(key.itemId, itemType: key.itemType);
 });
 
 final favoriteActionsProvider = Provider<FavoriteActions>((ref) {
@@ -117,18 +117,57 @@ class FavoriteActions {
     _ref.invalidate(isFavoriteArtistProvider(artistId));
   }
 
-  Future<void> addWishlist(int itemId, {ItemType itemType = ItemType.cd}) async {
+  Future<void> createWishlistItem({
+    required String title,
+    required ItemType itemType,
+    int? artistId,
+    String? artistName,
+    String? formatEdition,
+    String? notes,
+  }) async {
     final repository = _ref.read(favoriteRepositoryProvider);
-    await repository.addWishlist(itemId, itemType: itemType);
+    await repository.createWishlistItem(
+      title: title,
+      itemType: itemType,
+      artistId: artistId,
+      artistName: artistName,
+      formatEdition: formatEdition,
+      notes: notes,
+    );
     _ref.invalidate(wishlistProvider);
-    _ref.invalidate(isWishlistedProvider(FavoriteItemKey(itemId: itemId, itemType: itemType)));
+    _ref.invalidate(adminWishlistProvider);
   }
 
-  Future<void> removeWishlist(int itemId, {ItemType itemType = ItemType.cd}) async {
+  Future<void> removeWishlist(WishlistItem item) async {
     final repository = _ref.read(favoriteRepositoryProvider);
-    await repository.removeWishlist(itemId, itemType: itemType);
+    await repository.deleteWishlistItem(item);
     _ref.invalidate(wishlistProvider);
-    _ref.invalidate(isWishlistedProvider(FavoriteItemKey(itemId: itemId, itemType: itemType)));
+    _ref.invalidate(adminWishlistProvider);
+  }
+
+  Future<void> updateWishlistStatus({
+    required WishlistItem item,
+    required WishlistStatus status,
+  }) async {
+    final repository = _ref.read(favoriteRepositoryProvider);
+    await repository.updateWishlistStatus(item: item, status: status);
+    _ref.invalidate(wishlistProvider);
+    _ref.invalidate(adminWishlistProvider);
+  }
+
+  Future<void> convertWishlistToCollection({
+    required WishlistItem item,
+    required int artistId,
+    required ItemType itemType,
+  }) async {
+    final repository = _ref.read(favoriteRepositoryProvider);
+    await repository.convertWishlistItemToCollection(
+      item: item,
+      artistId: artistId,
+      itemType: itemType,
+    );
+    _ref.invalidate(wishlistProvider);
+    _ref.invalidate(adminWishlistProvider);
   }
 
   void _invalidateItemState(int albumId, ItemType itemType) {
@@ -136,8 +175,9 @@ class FavoriteActions {
     _ref.invalidate(favoriteAlbumIdsProvider);
     _ref.invalidate(favoriteAlbumItemsProvider);
     _ref.invalidate(favoriteItemsProvider);
-    _ref.invalidate(wishlistProvider);
     _ref.invalidate(isFavoriteAlbumProvider(albumId));
-    _ref.invalidate(isFavoriteItemProvider(FavoriteItemKey(itemId: albumId, itemType: itemType)));
+    _ref.invalidate(
+      isFavoriteItemProvider(FavoriteItemKey(itemId: albumId, itemType: itemType)),
+    );
   }
 }

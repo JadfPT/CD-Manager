@@ -5,6 +5,7 @@ import '../models/album_list_item.dart';
 import '../models/artist.dart';
 import '../models/item_type.dart';
 import '../models/user_favorite_album.dart';
+import '../models/wishlist_item.dart';
 
 class FavoriteRepository {
   FavoriteRepository({SupabaseClient? client})
@@ -21,6 +22,30 @@ class FavoriteRepository {
       throw AppException(message: 'Utilizador não autenticado');
     }
     return id;
+  }
+
+  Future<void> _ensureCurrentUserIsAdmin() async {
+    try {
+      final isAdmin = await _client.rpc('current_user_is_admin');
+      if (isAdmin != true) {
+        throw AppException(message: 'Apenas administradores podem fazer esta ação');
+      }
+    } catch (e) {
+      if (e is AppException) rethrow;
+      throw AppException(message: 'Falha ao validar permissões de admin: $e');
+    }
+  }
+
+  static int _asInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.parse(value.toString());
+  }
+
+  static DateTime? _asDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    return DateTime.parse(value.toString());
   }
 
   Future<List<UserFavoriteAlbum>> listFavoritesForCurrentUser() async {
@@ -147,22 +172,63 @@ class FavoriteRepository {
     }
   }
 
-  Future<List<AlbumListItem>> listWishlistItemsForCurrentUser() async {
+  Future<List<WishlistItem>> listWishlistEntriesForCurrentUser() async {
+    final userId = _requireUserId();
+
     try {
-      final cdItems = await _listItemsForCurrentUserByTable(
-        tableName: 'cd_albums',
-        linkTableName: 'user_wishlist_items',
-        itemType: ItemType.cd,
-      );
-      final vinylItems = await _listItemsForCurrentUserByTable(
-        tableName: 'vinyl_albums',
-        linkTableName: 'user_wishlist_items',
-        itemType: ItemType.vinyl,
-      );
-      return [...cdItems, ...vinylItems]
-        ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+      final data = await _client
+          .from('wishlist_items')
+          .select('id, user_id, title, artist_id, artist_name, item_type, format_edition, notes, status, created_at')
+          .eq('user_id', userId)
+          .neq('status', 'converted')
+          .order('created_at', ascending: false);
+
+      return data
+          .map((row) => WishlistItem.fromMap({...row, 'id_column': 'id'}))
+          .toList();
     } catch (e) {
       throw AppException(message: 'Falha ao listar wishlist: $e');
+    }
+  }
+
+  Future<List<WishlistItem>> listAllWishlistEntriesForAdmin() async {
+    await _ensureCurrentUserIsAdmin();
+
+    try {
+      final data = await _client
+          .from('wishlist_items')
+          .select('id, user_id, title, artist_id, artist_name, item_type, format_edition, notes, status, created_at')
+          .order('created_at', ascending: false);
+
+      final userIds = data
+          .map((row) => row['user_id'] as String)
+          .toSet()
+          .toList();
+
+      final profileMap = <String, Map<String, dynamic>>{};
+      if (userIds.isNotEmpty) {
+        final profiles = await _client
+            .from('profiles')
+            .select('id, username, display_name')
+            .inFilter('id', userIds);
+
+        for (final profile in profiles) {
+          profileMap[profile['id'] as String] = profile;
+        }
+      }
+
+      return data.map((row) {
+        final userId = row['user_id'] as String;
+        final profile = profileMap[userId] ?? const {};
+        return WishlistItem.fromMap({
+          ...row,
+          'id_column': 'id',
+          'requester_display_name': profile['display_name'],
+          'requester_username': profile['username'],
+        });
+      }).toList();
+    } catch (e) {
+      throw AppException(message: 'Falha ao listar wishlist admin: $e');
     }
   }
 
@@ -197,24 +263,6 @@ class FavoriteRepository {
       return data != null;
     } catch (e) {
       throw AppException(message: 'Falha ao verificar artista favorito: $e');
-    }
-  }
-
-  Future<bool> isWishlisted(int albumId, {ItemType itemType = ItemType.cd}) async {
-    final userId = _requireUserId();
-
-    try {
-      final data = await _client
-          .from('user_wishlist_items')
-          .select('item_id')
-          .eq('user_id', userId)
-          .eq('item_id', albumId)
-          .eq('item_type', _itemTypeToDb(itemType))
-          .maybeSingle();
-
-      return data != null;
-    } catch (e) {
-      throw AppException(message: 'Falha ao verificar wishlist: $e');
     }
   }
 
@@ -274,44 +322,98 @@ class FavoriteRepository {
     }
   }
 
-  Future<void> addWishlist(int albumId, {ItemType itemType = ItemType.cd}) async {
+  Future<void> createWishlistItem({
+    required String title,
+    required ItemType itemType,
+    int? artistId,
+    String? artistName,
+    String? formatEdition,
+    String? notes,
+  }) async {
     final userId = _requireUserId();
 
+    final normalizedTitle = title.trim();
+    if (normalizedTitle.isEmpty) {
+      throw AppException(message: 'Título é obrigatório');
+    }
+
+    final normalizedArtistName = artistName?.trim();
+    if (artistId == null && (normalizedArtistName == null || normalizedArtistName.isEmpty)) {
+      throw AppException(message: 'Seleciona um artista ou indica o nome do artista');
+    }
+
     try {
-      await _client.from('user_wishlist_items').insert({
+      await _client.from('wishlist_items').insert({
         'user_id': userId,
-        'item_id': albumId,
+        'title': normalizedTitle,
+        'artist_id': artistId,
+        'artist_name': normalizedArtistName,
         'item_type': _itemTypeToDb(itemType),
+        'format_edition': formatEdition?.trim().isEmpty == true ? null : formatEdition?.trim(),
+        'notes': notes?.trim().isEmpty == true ? null : notes?.trim(),
+        'status': 'pending',
       });
     } catch (e) {
       throw AppException(message: 'Falha ao adicionar à wishlist: $e');
     }
   }
 
-  Future<void> removeWishlist(int albumId, {ItemType itemType = ItemType.cd}) async {
+  Future<void> deleteWishlistItem(WishlistItem item) async {
     final userId = _requireUserId();
 
     try {
       await _client
-          .from('user_wishlist_items')
+          .from('wishlist_items')
           .delete()
           .eq('user_id', userId)
-          .eq('item_id', albumId)
-          .eq('item_type', _itemTypeToDb(itemType));
+          .eq('id', item.id);
     } catch (e) {
       throw AppException(message: 'Falha ao remover da wishlist: $e');
     }
   }
 
-  static int _asInt(dynamic value) {
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    return int.parse(value.toString());
+  Future<void> updateWishlistStatus({
+    required WishlistItem item,
+    required WishlistStatus status,
+  }) async {
+    await _ensureCurrentUserIsAdmin();
+
+    try {
+      final updated = await _client
+          .from('wishlist_items')
+          .update({'status': status.name})
+          .eq('id', item.id)
+          .select('id')
+          .maybeSingle();
+
+      if (updated == null) {
+        throw AppException(message: 'Item wishlist não encontrado');
+      }
+    } catch (e) {
+      if (e is AppException) rethrow;
+      throw AppException(message: 'Falha ao atualizar status da wishlist: $e');
+    }
   }
 
-  static DateTime? _asDateTime(dynamic value) {
-    if (value == null) return null;
-    if (value is DateTime) return value;
-    return DateTime.parse(value.toString());
+  Future<void> convertWishlistItemToCollection({
+    required WishlistItem item,
+    required int artistId,
+    required ItemType itemType,
+  }) async {
+    await _ensureCurrentUserIsAdmin();
+
+    try {
+      await _client.rpc(
+        'convert_wishlist_item_to_collection',
+        params: {
+          'wishlist_id': item.id,
+          'artist_id': artistId,
+          'item_type': _itemTypeToDb(itemType),
+        },
+      );
+    } catch (e) {
+      if (e is AppException) rethrow;
+      throw AppException(message: 'Falha ao converter wishlist para coleção: $e');
+    }
   }
 }
