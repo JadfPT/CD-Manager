@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:typed_data';
 import '../../auth/application/auth_providers.dart';
 import '../../../shared/models/profile.dart';
 import '../../../shared/repositories/profile_repository.dart';
@@ -47,5 +48,18 @@ class ProfileActions {
     );
     _ref.invalidate(currentProfileProvider);
     return profile;
+  }
+
+  Future<String> uploadAvatar({
+    required Uint8List fileBytes,
+    required String fileExtension,
+  }) async {
+    final repository = _ref.read(profileRepositoryProvider);
+    final avatarUrl = await repository.uploadAvatarForCurrentUser(
+      fileBytes: fileBytes,
+      fileExtension: fileExtension,
+    );
+    _ref.invalidate(currentProfileProvider);
+    return avatarUrl;
   }
 }

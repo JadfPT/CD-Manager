@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../shared/widgets/app_error_state.dart';
 import '../../../auth/application/auth_providers.dart';
 import '../../application/profile_providers.dart';
@@ -18,8 +19,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   final _usernameController = TextEditingController();
   final _displayNameController = TextEditingController();
   final _avatarUrlController = TextEditingController();
+  final _imagePicker = ImagePicker();
 
   String? _loadedProfileId;
+  bool _isUploadingAvatar = false;
 
   @override
   void dispose() {
@@ -68,6 +71,69 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   child: Column(
                     children: [
                       _AvatarPreview(avatarUrl: avatarSource),
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: _isUploadingAvatar
+                            ? null
+                            : () async {
+                                final picked = await _imagePicker.pickImage(
+                                  source: ImageSource.gallery,
+                                  maxWidth: 1200,
+                                  imageQuality: 85,
+                                );
+
+                                if (picked == null) return;
+
+                                try {
+                                  setState(() {
+                                    _isUploadingAvatar = true;
+                                  });
+
+                                  final bytes = await picked.readAsBytes();
+                                  final nameParts = picked.name.split('.');
+                                  final extension = nameParts.length > 1
+                                      ? nameParts.last
+                                      : 'jpg';
+
+                                  final url = await ref
+                                      .read(profileActionsProvider)
+                                      .uploadAvatar(
+                                        fileBytes: bytes,
+                                        fileExtension: extension,
+                                      );
+
+                                  _avatarUrlController.text = url;
+
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Avatar atualizado com sucesso'),
+                                    ),
+                                  );
+                                } catch (e) {
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Erro ao carregar avatar: $e'),
+                                    ),
+                                  );
+                                } finally {
+                                  if (mounted) {
+                                    setState(() {
+                                      _isUploadingAvatar = false;
+                                    });
+                                  }
+                                }
+                              },
+                        icon: _isUploadingAvatar
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.photo_camera_outlined),
+                        label: const Text('Carregar avatar'),
+                      ),
                       const SizedBox(height: 12),
                       Text(
                         profile?.displayName?.trim().isNotEmpty == true
@@ -151,30 +217,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             return null;
                           },
                         ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _avatarUrlController,
-                          decoration: const InputDecoration(
-                            labelText: 'Avatar URL',
-                            hintText: 'https://...',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.image_outlined),
-                          ),
-                          keyboardType: TextInputType.url,
-                          textInputAction: TextInputAction.done,
-                          validator: (value) {
-                            final text = value?.trim() ?? '';
-                            if (text.isEmpty) return null;
-                            final uri = Uri.tryParse(text);
-                            final isValid =
-                                uri != null &&
-                                (uri.scheme == 'http' ||
-                                    uri.scheme == 'https') &&
-                                uri.host.isNotEmpty;
-                            if (!isValid) return 'URL de avatar inválida';
-                            return null;
-                          },
-                        ),
                         const SizedBox(height: 14),
                         SizedBox(
                           width: double.infinity,
@@ -241,6 +283,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     ),
                   ),
                 ),
+              ),
+              const SizedBox(height: 12),
+              FilledButton.tonalIcon(
+                onPressed: () => context.push('/settings'),
+                icon: const Icon(Icons.settings_outlined),
+                label: const Text('Definições'),
               ),
               const SizedBox(height: 12),
               FilledButton.tonalIcon(

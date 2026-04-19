@@ -13,7 +13,9 @@ class Shell extends StatelessWidget {
     if (location.startsWith('/favorites')) return 1;
     if (location.startsWith('/artists')) return 2;
     if (location.startsWith('/loans')) return 3;
-    if (location.startsWith('/profile')) return 4;
+    if (location.startsWith('/profile') || location.startsWith('/settings')) {
+      return 4;
+    }
     return 0;
   }
 

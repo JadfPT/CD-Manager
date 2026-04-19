@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:typed_data';
 import '../../core/config/supabase_config.dart';
 import '../../core/utils/error_handler.dart';
 import '../models/profile.dart';
@@ -68,6 +69,49 @@ class ProfileRepository {
       return Profile.fromMap(data);
     } catch (e) {
       throw AppException(message: 'Falha ao atualizar perfil: $e');
+    }
+  }
+
+  Future<String> uploadAvatarForCurrentUser({
+    required Uint8List fileBytes,
+    required String fileExtension,
+  }) async {
+    final userId = _requireUserId();
+    final ext = fileExtension.toLowerCase().replaceAll('.', '');
+    final path = '$userId/avatar_${DateTime.now().millisecondsSinceEpoch}.$ext';
+
+    final contentType = switch (ext) {
+      'png' => 'image/png',
+      'webp' => 'image/webp',
+      'gif' => 'image/gif',
+      _ => 'image/jpeg',
+    };
+
+    try {
+      await _client.storage.from('avatars').uploadBinary(
+            path,
+            fileBytes,
+            fileOptions: FileOptions(
+              upsert: true,
+              contentType: contentType,
+            ),
+          );
+
+      final avatarUrl = _client.storage.from('avatars').getPublicUrl(path);
+      await updateCurrentUserProfile(avatarUrl: avatarUrl);
+      return avatarUrl;
+    } on StorageException catch (e) {
+      final msg = e.message.toLowerCase();
+      final isUnauthorized = e.statusCode == '403' || msg.contains('row level security');
+      if (isUnauthorized) {
+        throw AppException(
+          message:
+              'Sem permissão para upload no bucket avatars (RLS). Configura as policies de INSERT/UPDATE/SELECT para o utilizador autenticado.',
+        );
+      }
+      throw AppException(message: 'Falha ao carregar avatar: ${e.message}');
+    } catch (e) {
+      throw AppException(message: 'Falha ao carregar avatar: $e');
     }
   }
 }

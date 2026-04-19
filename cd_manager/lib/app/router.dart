@@ -12,6 +12,7 @@ import '../features/artists/presentation/pages/artists_page.dart';
 import '../features/artists/presentation/pages/artist_details_page.dart';
 import '../features/loans/presentation/pages/loans_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
+import '../features/settings/presentation/pages/settings_page.dart';
 import '../shared/models/item_type.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
@@ -100,6 +101,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/profile',
             builder: (context, state) => const ProfilePage(),
+          ),
+          GoRoute(
+            path: '/settings',
+            builder: (context, state) => const SettingsPage(),
           ),
         ],
       ),
