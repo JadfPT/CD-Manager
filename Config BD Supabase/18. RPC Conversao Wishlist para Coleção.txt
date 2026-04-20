@@ -36,6 +36,7 @@ declare
   v_final_format_edition text;
 
   v_new_item_id bigint;
+  v_next_cd_id bigint;
 begin
   v_user_id := auth.uid();
 
@@ -90,7 +91,12 @@ begin
   end if;
 
   if v_wishlist.item_type = 'cd' then
+    select coalesce(max(id), 0) + 1
+      into v_next_cd_id
+    from public.cd_albums;
+
     insert into public.cd_albums (
+      id,
       title,
       artist_id,
       on_shelf,
@@ -98,6 +104,7 @@ begin
       format_edition
     )
     values (
+      v_next_cd_id,
       v_final_title,
       p_artist_id,
       coalesce(p_on_shelf, true),
