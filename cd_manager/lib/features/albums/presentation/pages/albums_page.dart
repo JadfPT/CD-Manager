@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../shared/models/item_type.dart';
@@ -20,6 +21,7 @@ class AlbumsPage extends ConsumerStatefulWidget {
 class _AlbumsPageState extends ConsumerState<AlbumsPage> {
   late final TextEditingController _searchController;
   late final ScrollController _listScrollController;
+  bool _showTopFilters = true;
 
   @override
   void initState() {
@@ -33,6 +35,21 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
     _searchController.dispose();
     _listScrollController.dispose();
     super.dispose();
+  }
+
+  bool _onUserScroll(UserScrollNotification notification) {
+    if (notification.metrics.axis != Axis.vertical) return false;
+
+    final direction = notification.direction;
+    if (direction == ScrollDirection.reverse && _showTopFilters) {
+      setState(() => _showTopFilters = false);
+    } else if ((direction == ScrollDirection.forward ||
+            notification.metrics.pixels <= 0) &&
+        !_showTopFilters) {
+      setState(() => _showTopFilters = true);
+    }
+
+    return false;
   }
 
   @override
@@ -89,100 +106,116 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
           : null,
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: AppSearchField(
-              controller: _searchController,
-              hintText: 'Pesquisar por álbum ou artista',
-              onChanged: (value) {
-                ref.read(albumSearchQueryProvider.notifier).state = value;
-                setState(() {});
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+          ClipRect(
+            child: AnimatedAlign(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOut,
+              alignment: Alignment.topCenter,
+              heightFactor: _showTopFilters ? 1 : 0,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 180),
+                opacity: _showTopFilters ? 1 : 0,
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Tipo',
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                    const SizedBox(height: 8),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          _FilterPill(
-                            label: 'Todos',
-                            selected: typeFilter == ItemTypeFilter.all,
-                            onTap: () =>
-                                ref.read(itemTypeFilterProvider.notifier).state =
-                                    ItemTypeFilter.all,
-                          ),
-                          const SizedBox(width: 8),
-                          _FilterPill(
-                            label: 'CDs',
-                            selected: typeFilter == ItemTypeFilter.cd,
-                            onTap: () =>
-                                ref.read(itemTypeFilterProvider.notifier).state =
-                                    ItemTypeFilter.cd,
-                          ),
-                          const SizedBox(width: 8),
-                          _FilterPill(
-                            label: 'Vinis',
-                            selected: typeFilter == ItemTypeFilter.vinyl,
-                            onTap: () =>
-                                ref.read(itemTypeFilterProvider.notifier).state =
-                                    ItemTypeFilter.vinyl,
-                          ),
-                        ],
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                      child: AppSearchField(
+                        controller: _searchController,
+                        hintText: 'Pesquisar por álbum ou artista',
+                        onChanged: (value) {
+                          ref.read(albumSearchQueryProvider.notifier).state = value;
+                          setState(() {});
+                        },
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Localização',
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w700,
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Tipo',
+                                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                              ),
+                              const SizedBox(height: 8),
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children: [
+                                    _FilterPill(
+                                      label: 'Todos',
+                                      selected: typeFilter == ItemTypeFilter.all,
+                                      onTap: () => ref
+                                          .read(itemTypeFilterProvider.notifier)
+                                          .state = ItemTypeFilter.all,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _FilterPill(
+                                      label: 'CDs',
+                                      selected: typeFilter == ItemTypeFilter.cd,
+                                      onTap: () => ref
+                                          .read(itemTypeFilterProvider.notifier)
+                                          .state = ItemTypeFilter.cd,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _FilterPill(
+                                      label: 'Vinis',
+                                      selected: typeFilter == ItemTypeFilter.vinyl,
+                                      onTap: () => ref
+                                          .read(itemTypeFilterProvider.notifier)
+                                          .state = ItemTypeFilter.vinyl,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Localização',
+                                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                              ),
+                              const SizedBox(height: 8),
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children: [
+                                    _FilterPill(
+                                      label: 'Todos',
+                                      selected: filter == AlbumShelfFilter.all,
+                                      onTap: () => ref
+                                          .read(albumShelfFilterProvider.notifier)
+                                          .state = AlbumShelfFilter.all,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _FilterPill(
+                                      label: 'Na prateleira',
+                                      selected: filter == AlbumShelfFilter.onShelf,
+                                      onTap: () => ref
+                                          .read(albumShelfFilterProvider.notifier)
+                                          .state = AlbumShelfFilter.onShelf,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    _FilterPill(
+                                      label: 'Fora da prateleira',
+                                      selected: filter == AlbumShelfFilter.outsideShelf,
+                                      onTap: () => ref
+                                          .read(albumShelfFilterProvider.notifier)
+                                          .state = AlbumShelfFilter.outsideShelf,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                    ),
-                    const SizedBox(height: 8),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          _FilterPill(
-                            label: 'Todos',
-                            selected: filter == AlbumShelfFilter.all,
-                            onTap: () =>
-                                ref.read(albumShelfFilterProvider.notifier).state =
-                                    AlbumShelfFilter.all,
-                          ),
-                          const SizedBox(width: 8),
-                          _FilterPill(
-                            label: 'Na prateleira',
-                            selected: filter == AlbumShelfFilter.onShelf,
-                            onTap: () =>
-                                ref.read(albumShelfFilterProvider.notifier).state =
-                                    AlbumShelfFilter.onShelf,
-                          ),
-                          const SizedBox(width: 8),
-                          _FilterPill(
-                            label: 'Fora da prateleira',
-                            selected: filter == AlbumShelfFilter.outsideShelf,
-                            onTap: () =>
-                                ref.read(albumShelfFilterProvider.notifier).state =
-                                    AlbumShelfFilter.outsideShelf,
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ],
@@ -197,87 +230,99 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
                 await ref.read(visibleAlbumsProvider.future);
               },
               child: albumsAsync.when(
-                loading: () => Scrollbar(
-                  controller: _listScrollController,
-                  thumbVisibility: true,
-                  interactive: true,
-                  child: LoadingSkeleton(
+                loading: () => NotificationListener<UserScrollNotification>(
+                  onNotification: _onUserScroll,
+                  child: Scrollbar(
+                    controller: _listScrollController,
+                    thumbVisibility: true,
+                    interactive: true,
+                    child: LoadingSkeleton(
+                      child: ListView(
+                        controller: _listScrollController,
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: const [
+                          SizedBox(height: 8),
+                          AlbumTileSkeleton(),
+                          AlbumTileSkeleton(),
+                          AlbumTileSkeleton(),
+                          AlbumTileSkeleton(),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                error: (error, stackTrace) => NotificationListener<UserScrollNotification>(
+                  onNotification: _onUserScroll,
+                  child: Scrollbar(
+                    controller: _listScrollController,
+                    thumbVisibility: true,
+                    interactive: true,
                     child: ListView(
                       controller: _listScrollController,
                       physics: const AlwaysScrollableScrollPhysics(),
-                      children: const [
-                        SizedBox(height: 8),
-                        AlbumTileSkeleton(),
-                        AlbumTileSkeleton(),
-                        AlbumTileSkeleton(),
-                        AlbumTileSkeleton(),
+                      children: [
+                        SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.6,
+                          child: AppErrorState(
+                            message: error.toString(),
+                            onRetry: () => ref.invalidate(visibleAlbumsProvider),
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ),
-                error: (error, stackTrace) => Scrollbar(
-                  controller: _listScrollController,
-                  thumbVisibility: true,
-                  interactive: true,
-                  child: ListView(
-                    controller: _listScrollController,
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: [
-                      SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.6,
-                        child: AppErrorState(
-                          message: error.toString(),
-                          onRetry: () => ref.invalidate(visibleAlbumsProvider),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
                 data: (items) {
                   if (items.isEmpty) {
-                    return Scrollbar(
-                      controller: _listScrollController,
-                      thumbVisibility: true,
-                      interactive: true,
-                      child: ListView(
+                    return NotificationListener<UserScrollNotification>(
+                      onNotification: _onUserScroll,
+                      child: Scrollbar(
                         controller: _listScrollController,
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        children: [
-                          SizedBox(
-                            height: MediaQuery.of(context).size.height * 0.6,
-                            child: const AppEmptyState(
-                              title: 'Sem itens para mostrar',
-                              subtitle: 'Ajusta os filtros ou pesquisa.',
-                              icon: Icons.album_outlined,
+                        thumbVisibility: true,
+                        interactive: true,
+                        child: ListView(
+                          controller: _listScrollController,
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: [
+                            SizedBox(
+                              height: MediaQuery.of(context).size.height * 0.6,
+                              child: const AppEmptyState(
+                                title: 'Sem itens para mostrar',
+                                subtitle: 'Ajusta os filtros ou pesquisa.',
+                                icon: Icons.album_outlined,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   }
 
-                  return Scrollbar(
-                    controller: _listScrollController,
-                    thumbVisibility: true,
-                    interactive: true,
-                    child: ListView.builder(
+                  return NotificationListener<UserScrollNotification>(
+                    onNotification: _onUserScroll,
+                    child: Scrollbar(
                       controller: _listScrollController,
-                      physics: const BouncingScrollPhysics(
-                        parent: AlwaysScrollableScrollPhysics(),
+                      thumbVisibility: true,
+                      interactive: true,
+                      child: ListView.builder(
+                        controller: _listScrollController,
+                        physics: const BouncingScrollPhysics(
+                          parent: AlwaysScrollableScrollPhysics(),
+                        ),
+                        padding: const EdgeInsets.only(bottom: 16),
+                        itemCount: items.length,
+                        itemBuilder: (context, index) {
+                          final item = items[index];
+                          return AlbumListTile(
+                            item: item,
+                            onTap: () => context.push(
+                              '/albums/${item.albumId}?type=${item.itemType.value}',
+                              extra: item.itemType,
+                            ),
+                            onArtistTap: () => context.push('/artists/${item.artistId}'),
+                          );
+                        },
                       ),
-                      padding: const EdgeInsets.only(bottom: 16),
-                      itemCount: items.length,
-                      itemBuilder: (context, index) {
-                        final item = items[index];
-                        return AlbumListTile(
-                          item: item,
-                          onTap: () => context.push(
-                            '/albums/${item.albumId}?type=${item.itemType.value}',
-                            extra: item.itemType,
-                          ),
-                          onArtistTap: () => context.push('/artists/${item.artistId}'),
-                        );
-                      },
                     ),
                   );
                 },
