@@ -69,6 +69,8 @@ class AlbumListTile extends StatelessWidget {
                   children: [
                     Text(
                       item.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w800,
                           ),
@@ -100,11 +102,15 @@ class AlbumListTile extends StatelessWidget {
                                 : null,
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            item.artistName,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
+                          Flexible(
+                            child: Text(
+                              item.artistName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
                           ),
                         ],
                       ),
@@ -114,6 +120,8 @@ class AlbumListTile extends StatelessWidget {
                       const SizedBox(height: 5),
                       Text(
                         item.artistGenreText!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: colors.onSurfaceVariant.withValues(alpha: 0.88),
                             ),

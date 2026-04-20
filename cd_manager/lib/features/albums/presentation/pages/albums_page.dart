@@ -19,16 +19,19 @@ class AlbumsPage extends ConsumerStatefulWidget {
 
 class _AlbumsPageState extends ConsumerState<AlbumsPage> {
   late final TextEditingController _searchController;
+  late final ScrollController _listScrollController;
 
   @override
   void initState() {
     super.initState();
     _searchController = TextEditingController();
+    _listScrollController = ScrollController();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _listScrollController.dispose();
     super.dispose();
   }
 
@@ -194,64 +197,88 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
                 await ref.read(visibleAlbumsProvider.future);
               },
               child: albumsAsync.when(
-                loading: () => LoadingSkeleton(
+                loading: () => Scrollbar(
+                  controller: _listScrollController,
+                  thumbVisibility: true,
+                  interactive: true,
+                  child: LoadingSkeleton(
+                    child: ListView(
+                      controller: _listScrollController,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: const [
+                        SizedBox(height: 8),
+                        AlbumTileSkeleton(),
+                        AlbumTileSkeleton(),
+                        AlbumTileSkeleton(),
+                        AlbumTileSkeleton(),
+                      ],
+                    ),
+                  ),
+                ),
+                error: (error, stackTrace) => Scrollbar(
+                  controller: _listScrollController,
+                  thumbVisibility: true,
+                  interactive: true,
                   child: ListView(
+                    controller: _listScrollController,
                     physics: const AlwaysScrollableScrollPhysics(),
-                    children: const [
-                      SizedBox(height: 8),
-                      AlbumTileSkeleton(),
-                      AlbumTileSkeleton(),
-                      AlbumTileSkeleton(),
-                      AlbumTileSkeleton(),
+                    children: [
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.6,
+                        child: AppErrorState(
+                          message: error.toString(),
+                          onRetry: () => ref.invalidate(visibleAlbumsProvider),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                error: (error, stackTrace) => ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: [
-                    SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.6,
-                      child: AppErrorState(
-                        message: error.toString(),
-                        onRetry: () => ref.invalidate(visibleAlbumsProvider),
-                      ),
-                    ),
-                  ],
-                ),
                 data: (items) {
                   if (items.isEmpty) {
-                    return ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      children: [
-                        SizedBox(
-                          height: MediaQuery.of(context).size.height * 0.6,
-                          child: const AppEmptyState(
-                            title: 'Sem itens para mostrar',
-                            subtitle: 'Ajusta os filtros ou pesquisa.',
-                            icon: Icons.album_outlined,
+                    return Scrollbar(
+                      controller: _listScrollController,
+                      thumbVisibility: true,
+                      interactive: true,
+                      child: ListView(
+                        controller: _listScrollController,
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.6,
+                            child: const AppEmptyState(
+                              title: 'Sem itens para mostrar',
+                              subtitle: 'Ajusta os filtros ou pesquisa.',
+                              icon: Icons.album_outlined,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     );
                   }
 
-                  return ListView.builder(
-                    physics: const BouncingScrollPhysics(
-                      parent: AlwaysScrollableScrollPhysics(),
+                  return Scrollbar(
+                    controller: _listScrollController,
+                    thumbVisibility: true,
+                    interactive: true,
+                    child: ListView.builder(
+                      controller: _listScrollController,
+                      physics: const BouncingScrollPhysics(
+                        parent: AlwaysScrollableScrollPhysics(),
+                      ),
+                      padding: const EdgeInsets.only(bottom: 16),
+                      itemCount: items.length,
+                      itemBuilder: (context, index) {
+                        final item = items[index];
+                        return AlbumListTile(
+                          item: item,
+                          onTap: () => context.push(
+                            '/albums/${item.albumId}?type=${item.itemType.value}',
+                            extra: item.itemType,
+                          ),
+                          onArtistTap: () => context.push('/artists/${item.artistId}'),
+                        );
+                      },
                     ),
-                    padding: const EdgeInsets.only(bottom: 16),
-                    itemCount: items.length,
-                    itemBuilder: (context, index) {
-                      final item = items[index];
-                      return AlbumListTile(
-                        item: item,
-                        onTap: () => context.push(
-                          '/albums/${item.albumId}?type=${item.itemType.value}',
-                          extra: item.itemType,
-                        ),
-                        onArtistTap: () => context.push('/artists/${item.artistId}'),
-                      );
-                    },
                   );
                 },
               ),

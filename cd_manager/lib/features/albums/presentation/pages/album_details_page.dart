@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/config/supabase_config.dart';
-import '../../../../shared/models/album_detail_view.dart';
 import '../../../../shared/models/album_loan.dart';
 import '../../../../shared/models/item_type.dart';
-import '../../../../shared/models/wishlist_item.dart';
 import '../../../../shared/application/ui_action_executor.dart';
 import '../../../../shared/widgets/app_section_card.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
@@ -24,7 +22,6 @@ import '../widgets/album_header_card.dart';
 import '../widgets/album_meta_section.dart';
 import '../widgets/favorite_button.dart';
 import '../widgets/note_editor_card.dart';
-import '../widgets/wishlist_button.dart';
 
 class AlbumDetailsPage extends ConsumerWidget {
   const AlbumDetailsPage({
@@ -44,7 +41,6 @@ class AlbumDetailsPage extends ConsumerWidget {
     final noteKey = NoteItemKey(itemId: albumId, itemType: itemType);
     final detailsAsync = ref.watch(albumDetailsProvider(key));
     final favoriteAsync = ref.watch(isFavoriteItemProvider(favoriteKey));
-    final wishlistAsync = ref.watch(wishlistProvider);
     final noteAsync = ref.watch(itemNoteProvider(noteKey));
     final profileAsync = ref.watch(currentProfileProvider);
     final activeLoanDetailsAsync = ref.watch(
@@ -97,10 +93,6 @@ class AlbumDetailsPage extends ConsumerWidget {
             final currentNote = noteAsync.maybeWhen(
               data: (note) => note?.note,
               orElse: () => details.userNote?.note,
-            );
-            final currentWishlistItem = wishlistAsync.maybeWhen(
-              data: (items) => _findMatchingWishlistItem(items, details),
-              orElse: () => null,
             );
 
             final profile = profileAsync.valueOrNull;
@@ -176,7 +168,7 @@ class AlbumDetailsPage extends ConsumerWidget {
                   const SizedBox(height: 12),
                   AppSectionCard(
                     title: 'Ações secundárias',
-                    subtitle: 'Favoritos, wishlist e gestão (admin)',
+                    subtitle: 'Favoritos e gestão (admin)',
                     child: Column(
                       children: [
                         Wrap(
@@ -200,35 +192,6 @@ class AlbumDetailsPage extends ConsumerWidget {
                                       ? 'Item removido dos favoritos.'
                                       : 'Item adicionado aos favoritos.',
                                   errorMessage: 'Não foi possível atualizar favorito.',
-                                );
-                              },
-                            ),
-                            WishlistButton(
-                              isInWishlist: currentWishlistItem != null,
-                              isLoading: false,
-                              onPressed: () async {
-                                await UiActionExecutor.run(
-                                  context,
-                                  actionName: 'toggle_wishlist_${resolvedItemType.value}_$albumId',
-                                  logCategory: 'wishlist.ui',
-                                  action: () async {
-                                    final actions = ref.read(favoriteActionsProvider);
-                                    if (currentWishlistItem != null) {
-                                      await actions.removeWishlist(currentWishlistItem);
-                                    } else {
-                                      await actions.createWishlistItem(
-                                        title: details.album.title,
-                                        itemType: resolvedItemType,
-                                        artistId: details.artist.id,
-                                        artistName: details.artist.name,
-                                        formatEdition: details.album.formatEdition,
-                                      );
-                                    }
-                                  },
-                                  successMessage: currentWishlistItem != null
-                                      ? 'Item removido da wishlist.'
-                                      : 'Item adicionado à wishlist.',
-                                  errorMessage: 'Não foi possível atualizar a wishlist.',
                                 );
                               },
                             ),
@@ -299,20 +262,6 @@ class AlbumDetailsPage extends ConsumerWidget {
       ),
     );
   }
-}
-
-WishlistItem? _findMatchingWishlistItem(
-  List<WishlistItem> items,
-  AlbumDetailsViewData details,
-) {
-  for (final item in items) {
-    if (item.itemType == details.itemType &&
-        item.title.trim().toLowerCase() == details.album.title.trim().toLowerCase() &&
-        item.artistId == details.artist.id) {
-      return item;
-    }
-  }
-  return null;
 }
 
 class _LoanSection extends StatelessWidget {

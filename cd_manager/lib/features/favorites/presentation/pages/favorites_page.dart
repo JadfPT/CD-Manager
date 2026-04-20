@@ -94,41 +94,45 @@ class _FavoriteItemsTab extends ConsumerWidget {
             );
           }
 
-          return ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.only(bottom: 16),
-            itemCount: items.length,
-            itemBuilder: (context, index) {
-              final item = items[index];
-              return AlbumListTile(
-                item: item,
-                onTap: () => context.push(
-                  '/albums/${item.albumId}?type=${item.itemType.value}',
-                  extra: item.itemType,
-                ),
-                onArtistTap: () => context.push('/artists/${item.artistId}'),
-                trailing: IconButton(
-                  tooltip: 'Remover dos favoritos',
-                  icon: const Icon(Icons.favorite),
-                  onPressed: () async {
-                    try {
-                      await ref.read(favoriteActionsProvider).remove(
-                            item.albumId,
-                            itemType: item.itemType,
-                          );
-                      if (!context.mounted) return;
-                      AppFeedback.success(context, 'Item removido dos favoritos.');
-                    } catch (e) {
-                      if (!context.mounted) return;
-                      AppFeedback.error(
-                        context,
-                        'Não foi possível remover favorito: $e',
-                      );
-                    }
-                  },
-                ),
-              );
-            },
+          return Scrollbar(
+            thumbVisibility: true,
+            interactive: true,
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.only(bottom: 16),
+              itemCount: items.length,
+              itemBuilder: (context, index) {
+                final item = items[index];
+                return AlbumListTile(
+                  item: item,
+                  onTap: () => context.push(
+                    '/albums/${item.albumId}?type=${item.itemType.value}',
+                    extra: item.itemType,
+                  ),
+                  onArtistTap: () => context.push('/artists/${item.artistId}'),
+                  trailing: IconButton(
+                    tooltip: 'Remover dos favoritos',
+                    icon: const Icon(Icons.favorite),
+                    onPressed: () async {
+                      try {
+                        await ref.read(favoriteActionsProvider).remove(
+                              item.albumId,
+                              itemType: item.itemType,
+                            );
+                        if (!context.mounted) return;
+                        AppFeedback.success(context, 'Item removido dos favoritos.');
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        AppFeedback.error(
+                          context,
+                          'Não foi possível remover favorito: $e',
+                        );
+                      }
+                    },
+                  ),
+                );
+              },
+            ),
           );
         },
       ),
@@ -167,53 +171,57 @@ class _FavoriteArtistsTab extends ConsumerWidget {
             );
           }
 
-          return ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.only(bottom: 16),
-            itemCount: artists.length,
-            itemBuilder: (context, index) {
-              final artist = artists[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundImage: artist.imageUrl == null || artist.imageUrl!.trim().isEmpty
-                        ? null
-                        : NetworkImage(artist.imageUrl!.trim()),
-                    child: artist.imageUrl == null || artist.imageUrl!.trim().isEmpty
-                        ? Text(artist.name.isNotEmpty ? artist.name[0].toUpperCase() : '?')
-                        : null,
+          return Scrollbar(
+            thumbVisibility: true,
+            interactive: true,
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.only(bottom: 16),
+              itemCount: artists.length,
+              itemBuilder: (context, index) {
+                final artist = artists[index];
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundImage: artist.imageUrl == null || artist.imageUrl!.trim().isEmpty
+                          ? null
+                          : NetworkImage(artist.imageUrl!.trim()),
+                      child: artist.imageUrl == null || artist.imageUrl!.trim().isEmpty
+                          ? Text(artist.name.isNotEmpty ? artist.name[0].toUpperCase() : '?')
+                          : null,
+                    ),
+                    title: Text(artist.name),
+                    subtitle: Text(
+                      artist.genreText == null || artist.genreText!.trim().isEmpty
+                          ? 'Sem género'
+                          : artist.genreText!,
+                    ),
+                    trailing: IconButton(
+                      tooltip: 'Remover artista favorito',
+                      icon: const Icon(Icons.star, color: Colors.amber),
+                      onPressed: () async {
+                        try {
+                          await ref.read(favoriteActionsProvider).removeArtist(artist.id);
+                          if (!context.mounted) return;
+                          AppFeedback.success(
+                            context,
+                            'Artista removido dos favoritos.',
+                          );
+                        } catch (e) {
+                          if (!context.mounted) return;
+                          AppFeedback.error(
+                            context,
+                            'Não foi possível remover artista favorito: $e',
+                          );
+                        }
+                      },
+                    ),
+                    onTap: () => context.push('/artists/${artist.id}'),
                   ),
-                  title: Text(artist.name),
-                  subtitle: Text(
-                    artist.genreText == null || artist.genreText!.trim().isEmpty
-                        ? 'Sem género'
-                        : artist.genreText!,
-                  ),
-                  trailing: IconButton(
-                    tooltip: 'Remover artista favorito',
-                    icon: const Icon(Icons.star, color: Colors.amber),
-                    onPressed: () async {
-                      try {
-                        await ref.read(favoriteActionsProvider).removeArtist(artist.id);
-                        if (!context.mounted) return;
-                        AppFeedback.success(
-                          context,
-                          'Artista removido dos favoritos.',
-                        );
-                      } catch (e) {
-                        if (!context.mounted) return;
-                        AppFeedback.error(
-                          context,
-                          'Não foi possível remover artista favorito: $e',
-                        );
-                      }
-                    },
-                  ),
-                  onTap: () => context.push('/artists/${artist.id}'),
-                ),
-              );
-            },
+                );
+              },
+            ),
           );
         },
       ),
@@ -243,47 +251,51 @@ class _WishlistTab extends ConsumerWidget {
           ),
         ),
         data: (items) {
-          return ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.only(bottom: 16),
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: FilledButton.icon(
-                  onPressed: () => _openCreateWishlistSheet(context, ref, artists),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Novo item wishlist'),
-                ),
-              ),
-              if (items.isEmpty)
-                SizedBox(
-                  height: MediaQuery.of(context).size.height * 0.55,
-                  child: const AppEmptyState(
-                    title: 'Wishlist vazia',
-                    subtitle: 'Adiciona itens à wishlist para os acompanhar aqui.',
-                    icon: Icons.push_pin_outlined,
-                  ),
-                )
-              else
-                ...items.map(
-                  (item) => _WishlistCard(
-                    item: item,
-                    onRemove: () async {
-                      try {
-                        await ref.read(favoriteActionsProvider).removeWishlist(item);
-                        if (!context.mounted) return;
-                        AppFeedback.success(context, 'Item removido da wishlist.');
-                      } catch (e) {
-                        if (!context.mounted) return;
-                        AppFeedback.error(
-                          context,
-                          'Não foi possível remover item da wishlist: $e',
-                        );
-                      }
-                    },
+          return Scrollbar(
+            thumbVisibility: true,
+            interactive: true,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.only(bottom: 16),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: FilledButton.icon(
+                    onPressed: () => _openCreateWishlistSheet(context, ref, artists),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Novo item wishlist'),
                   ),
                 ),
-            ],
+                if (items.isEmpty)
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.55,
+                    child: const AppEmptyState(
+                      title: 'Wishlist vazia',
+                      subtitle: 'Adiciona itens à wishlist para os acompanhar aqui.',
+                      icon: Icons.push_pin_outlined,
+                    ),
+                  )
+                else
+                  ...items.map(
+                    (item) => _WishlistCard(
+                      item: item,
+                      onRemove: () async {
+                        try {
+                          await ref.read(favoriteActionsProvider).removeWishlist(item);
+                          if (!context.mounted) return;
+                          AppFeedback.success(context, 'Item removido da wishlist.');
+                        } catch (e) {
+                          if (!context.mounted) return;
+                          AppFeedback.error(
+                            context,
+                            'Não foi possível remover item da wishlist: $e',
+                          );
+                        }
+                      },
+                    ),
+                  ),
+              ],
+            ),
           );
         },
       ),
@@ -700,14 +712,18 @@ class _AlwaysScrollable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      children: [
-        SizedBox(
-          height: MediaQuery.of(context).size.height * 0.7,
-          child: child,
-        ),
-      ],
+    return Scrollbar(
+      thumbVisibility: true,
+      interactive: true,
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: MediaQuery.of(context).size.height * 0.7,
+            child: child,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -717,15 +733,19 @@ class _LoadingListBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LoadingSkeleton(
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        children: const [
-          SizedBox(height: 8),
-          AlbumTileSkeleton(),
-          AlbumTileSkeleton(),
-          AlbumTileSkeleton(),
-        ],
+    return Scrollbar(
+      thumbVisibility: true,
+      interactive: true,
+      child: LoadingSkeleton(
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: const [
+            SizedBox(height: 8),
+            AlbumTileSkeleton(),
+            AlbumTileSkeleton(),
+            AlbumTileSkeleton(),
+          ],
+        ),
       ),
     );
   }

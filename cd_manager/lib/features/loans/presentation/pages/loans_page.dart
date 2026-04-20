@@ -45,107 +45,111 @@ class LoansPage extends ConsumerWidget {
               ref.invalidate(activeLoanListItemsProvider);
               await ref.read(activeLoanListItemsProvider.future);
             },
-            child: ListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: items.length,
-              itemBuilder: (context, index) {
-                final item = items[index];
+            child: Scrollbar(
+              thumbVisibility: true,
+              interactive: true,
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                itemCount: items.length,
+                itemBuilder: (context, index) {
+                  final item = items[index];
 
-                return Card(
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                    onTap: () => context.push(
-                      '/albums/${item.albumId}?type=${item.itemType.value}',
-                      extra: item.itemType,
+                  return Card(
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          AlbumCover(
-                            coverUrl: item.coverUrl,
-                            title: item.title,
-                            size: 72,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        item.title,
-                                        style: Theme.of(context).textTheme.titleMedium
-                                            ?.copyWith(fontWeight: FontWeight.w700),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: item.itemType == ItemType.cd
-                                            ? Colors.blue.withValues(alpha: 0.2)
-                                            : Colors.purple.withValues(alpha: 0.2),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        item.itemType == ItemType.cd ? 'CD' : 'Vinil',
-                                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                              color: item.itemType == ItemType.cd
-                                                  ? Colors.blue
-                                                  : Colors.purple,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  item.artistName,
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                ),
-                                const SizedBox(height: 8),
-                                _InfoRow(
-                                  label: 'ID',
-                                  value: '#${item.albumId}',
-                                ),
-                                const SizedBox(height: 4),
-                                _InfoRow(
-                                  label: 'Quem requisitou',
-                                  value: item.borrowerLabel,
-                                ),
-                                const SizedBox(height: 4),
-                                _InfoRow(
-                                  label: 'Quando requisitou',
-                                  value: _formatDate(item.borrowedAt),
-                                ),
-                              ],
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: () => context.push(
+                        '/albums/${item.albumId}?type=${item.itemType.value}',
+                        extra: item.itemType,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            AlbumCover(
+                              coverUrl: item.coverUrl,
+                              title: item.title,
+                              size: 72,
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Icon(
-                            Icons.chevron_right,
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
-                          ),
-                        ],
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          item.title,
+                                          style: Theme.of(context).textTheme.titleMedium
+                                              ?.copyWith(fontWeight: FontWeight.w700),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: item.itemType == ItemType.cd
+                                              ? Colors.blue.withValues(alpha: 0.2)
+                                              : Colors.purple.withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          item.itemType == ItemType.cd ? 'CD' : 'Vinil',
+                                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                                color: item.itemType == ItemType.cd
+                                                    ? Colors.blue
+                                                    : Colors.purple,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    item.artistName,
+                                    style: Theme.of(context).textTheme.bodyMedium,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  _InfoRow(
+                                    label: 'ID',
+                                    value: '#${item.albumId}',
+                                  ),
+                                  const SizedBox(height: 4),
+                                  _InfoRow(
+                                    label: 'Quem requisitou',
+                                    value: item.borrowerLabel,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  _InfoRow(
+                                    label: 'Quando requisitou',
+                                    value: _formatDate(item.borrowedAt),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(
+                              Icons.chevron_right,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           );
         },
