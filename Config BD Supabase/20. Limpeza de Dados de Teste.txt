@@ -1,0 +1,39 @@
+begin;
+
+delete from public.item_collection_entries;
+delete from public.item_collections;
+
+delete from public.item_loans;
+delete from public.user_item_notes;
+delete from public.user_favorite_items;
+delete from public.user_favorite_artists;
+delete from public.wishlist_items;
+
+delete from public.vinyl_albums;
+delete from public.cd_albums;
+
+delete from public.artists;
+
+commit;
+
+________________________________________________________________________________
+
+
+
+begin;
+
+truncate table public.item_collection_entries restart identity cascade;
+truncate table public.item_collections restart identity cascade;
+
+truncate table public.item_loans restart identity cascade;
+truncate table public.user_item_notes restart identity cascade;
+truncate table public.user_favorite_items restart identity cascade;
+truncate table public.user_favorite_artists restart identity cascade;
+truncate table public.wishlist_items restart identity cascade;
+
+truncate table public.vinyl_albums restart identity cascade;
+truncate table public.cd_albums restart identity cascade;
+
+delete from public.artists;
+
+commit;
