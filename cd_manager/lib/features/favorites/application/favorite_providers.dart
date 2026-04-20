@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/utils/app_logger.dart';
 import '../../../shared/models/album_list_item.dart';
 import '../../../shared/models/artist.dart';
 import '../../../shared/models/item_type.dart';
@@ -92,18 +93,21 @@ class FavoriteActions {
   final Ref _ref;
 
   Future<void> add(int albumId, {ItemType itemType = ItemType.cd}) async {
+    AppLogger.info('favorite add itemId=$albumId type=${itemType.value}', category: 'favorites');
     final repository = _ref.read(favoriteRepositoryProvider);
     await repository.addFavorite(albumId, itemType: itemType);
     _invalidateItemState(albumId, itemType);
   }
 
   Future<void> remove(int albumId, {ItemType itemType = ItemType.cd}) async {
+    AppLogger.info('favorite remove itemId=$albumId type=${itemType.value}', category: 'favorites');
     final repository = _ref.read(favoriteRepositoryProvider);
     await repository.removeFavorite(albumId, itemType: itemType);
     _invalidateItemState(albumId, itemType);
   }
 
   Future<void> addArtist(int artistId) async {
+    AppLogger.info('favorite artist add artistId=$artistId', category: 'favorites');
     final repository = _ref.read(favoriteRepositoryProvider);
     await repository.addFavoriteArtist(artistId);
     _ref.invalidate(favoriteArtistsProvider);
@@ -111,6 +115,7 @@ class FavoriteActions {
   }
 
   Future<void> removeArtist(int artistId) async {
+    AppLogger.info('favorite artist remove artistId=$artistId', category: 'favorites');
     final repository = _ref.read(favoriteRepositoryProvider);
     await repository.removeFavoriteArtist(artistId);
     _ref.invalidate(favoriteArtistsProvider);
@@ -125,6 +130,7 @@ class FavoriteActions {
     String? formatEdition,
     String? notes,
   }) async {
+    AppLogger.info('wishlist create title=$title type=${itemType.value}', category: 'wishlist');
     final repository = _ref.read(favoriteRepositoryProvider);
     await repository.createWishlistItem(
       title: title,
@@ -139,6 +145,7 @@ class FavoriteActions {
   }
 
   Future<void> removeWishlist(WishlistItem item) async {
+    AppLogger.info('wishlist remove id=${item.id}', category: 'wishlist');
     final repository = _ref.read(favoriteRepositoryProvider);
     await repository.deleteWishlistItem(item);
     _ref.invalidate(wishlistProvider);
@@ -146,6 +153,7 @@ class FavoriteActions {
   }
 
   Future<void> deleteWishlistItemAsAdmin(WishlistItem item) async {
+    AppLogger.info('wishlist admin reject id=${item.id}', category: 'wishlist');
     final repository = _ref.read(favoriteRepositoryProvider);
     await repository.deleteWishlistItemAsAdmin(item);
     _ref.invalidate(wishlistProvider);
@@ -156,6 +164,7 @@ class FavoriteActions {
     required WishlistItem item,
     required WishlistStatus status,
   }) async {
+    AppLogger.info('wishlist status id=${item.id} status=${status.name}', category: 'wishlist');
     final repository = _ref.read(favoriteRepositoryProvider);
     await repository.updateWishlistStatus(item: item, status: status);
     _ref.invalidate(wishlistProvider);
@@ -166,6 +175,10 @@ class FavoriteActions {
     required WishlistItem item,
     required int artistId,
   }) async {
+    AppLogger.info(
+      'wishlist convert id=${item.id} artistId=$artistId type=${item.itemType.value}',
+      category: 'wishlist',
+    );
     final repository = _ref.read(favoriteRepositoryProvider);
     await repository.convertWishlistItemToCollection(
       item: item,

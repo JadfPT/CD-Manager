@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'app_routes.dart';
 import '../features/auth/application/auth_providers.dart';
 import '../features/auth/presentation/pages/login_page.dart';
 import '../features/auth/presentation/pages/register_page.dart';
@@ -28,18 +29,18 @@ final goRouterProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     navigatorKey: GlobalKey<NavigatorState>(),
-    initialLocation: '/',
+    initialLocation: AppRoutes.home,
     redirect: (context, state) {
-      final isLoggingIn = state.matchedLocation == '/login' ||
-          state.matchedLocation == '/register';
+      final isLoggingIn = state.matchedLocation == AppRoutes.login ||
+          state.matchedLocation == AppRoutes.register;
 
       if (authState is AuthSuccess) {
         if (isLoggingIn) {
-          return '/';
+          return AppRoutes.home;
         }
       } else if (authState is AuthInitial) {
         if (!isLoggingIn) {
-          return '/login';
+          return AppRoutes.login;
         }
       }
 
@@ -47,18 +48,18 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(
-        path: '/login',
+        path: AppRoutes.login,
         pageBuilder: (context, state) => _fadePage(state, const LoginPage()),
       ),
       GoRoute(
-        path: '/register',
+        path: AppRoutes.register,
         pageBuilder: (context, state) => _fadePage(state, const RegisterPage()),
       ),
       ShellRoute(
         builder: (context, state, child) => Shell(child: child),
         routes: [
           GoRoute(
-            path: '/',
+            path: AppRoutes.home,
             pageBuilder: (context, state) => _fadePage(state, const AlbumsPage()),
           ),
           GoRoute(
@@ -94,11 +95,11 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             },
           ),
           GoRoute(
-            path: '/favorites',
+            path: AppRoutes.favorites,
             pageBuilder: (context, state) => _fadePage(state, const FavoritesPage()),
           ),
           GoRoute(
-            path: '/artists',
+            path: AppRoutes.artists,
             pageBuilder: (context, state) => _fadePage(state, const ArtistsPage()),
           ),
           GoRoute(
@@ -117,19 +118,19 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             },
           ),
           GoRoute(
-            path: '/loans',
+            path: AppRoutes.loans,
             pageBuilder: (context, state) => _fadePage(state, const LoansPage()),
           ),
           GoRoute(
-            path: '/profile',
+            path: AppRoutes.profile,
             pageBuilder: (context, state) => _fadePage(state, const ProfilePage()),
           ),
           GoRoute(
-            path: '/settings',
+            path: AppRoutes.settings,
             pageBuilder: (context, state) => _fadePage(state, const SettingsPage()),
           ),
           GoRoute(
-            path: '/random',
+            path: AppRoutes.random,
             pageBuilder: (context, state) => _fadePage(state, const RandomPage()),
           ),
           GoRoute(
@@ -160,15 +161,15 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             },
           ),
           GoRoute(
-            path: '/admin/wishlist',
+            path: AppRoutes.adminWishlist,
             pageBuilder: (context, state) => _fadePage(state, const WishlistAdminPage()),
           ),
           GoRoute(
-            path: '/collections',
+            path: AppRoutes.collections,
             pageBuilder: (context, state) => _fadePage(state, const CollectionsPage()),
           ),
           GoRoute(
-            path: '/collections/new',
+            path: AppRoutes.collectionsNew,
             pageBuilder: (context, state) => _fadePage(state, const CollectionFormPage.create()),
           ),
           GoRoute(

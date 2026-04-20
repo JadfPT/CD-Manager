@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../shared/widgets/app_network_image.dart';
 
 class AlbumCover extends StatelessWidget {
   const AlbumCover({
@@ -14,8 +15,6 @@ class AlbumCover extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
     if (coverUrl == null || coverUrl!.trim().isEmpty) {
       return _CoverFrame(
         size: size,
@@ -27,40 +26,12 @@ class AlbumCover extends StatelessWidget {
       size: size,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
-        child: SizedBox(
+        child: AppNetworkImage(
+          imageUrl: coverUrl,
           width: size,
           height: size,
-          child: Image.network(
-            coverUrl!,
-            fit: BoxFit.cover,
-            frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-              if (wasSynchronouslyLoaded) return child;
-              return AnimatedOpacity(
-                opacity: frame == null ? 0 : 1,
-                duration: const Duration(milliseconds: 280),
-                curve: Curves.easeOut,
-                child: child,
-              );
-            },
-            errorBuilder: (context, error, stackTrace) {
-              return _PlaceholderCover(size: size, title: title);
-            },
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Container(
-                color: colors.surfaceContainerHighest,
-                alignment: Alignment.center,
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: colors.primary,
-                  ),
-                ),
-              );
-            },
-          ),
+          fit: BoxFit.cover,
+          placeholder: _PlaceholderCover(size: size, title: title),
         ),
       ),
     );

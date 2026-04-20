@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../shared/models/album_list_item.dart';
 import '../../../../shared/models/item_type.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
+import '../../../../shared/widgets/app_network_image.dart';
 import '../../../../shared/widgets/app_section_card.dart';
 
 class RecentItemsSection extends StatelessWidget {
@@ -38,19 +39,17 @@ class RecentItemsSection extends StatelessWidget {
             ),
             leading: ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: item.coverUrl != null && item.coverUrl!.trim().isNotEmpty
-                  ? Image.network(
-                      item.coverUrl!,
-                      width: 44,
-                      height: 44,
-                      fit: BoxFit.cover,
-                    )
-                  : Container(
-                      width: 44,
-                      height: 44,
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                      child: const Icon(Icons.album, size: 20),
-                    ),
+              child: AppNetworkImage(
+                imageUrl: item.coverUrl,
+                width: 44,
+                height: 44,
+                placeholder: Container(
+                  width: 44,
+                  height: 44,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  child: const Icon(Icons.album, size: 20),
+                ),
+              ),
             ),
             title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
             subtitle: Text(

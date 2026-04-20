@@ -6,10 +6,10 @@ import '../../../../shared/models/album_detail_view.dart';
 import '../../../../shared/models/album_loan.dart';
 import '../../../../shared/models/item_type.dart';
 import '../../../../shared/models/wishlist_item.dart';
+import '../../../../shared/application/ui_action_executor.dart';
 import '../../../../shared/widgets/app_section_card.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_error_state.dart';
-import '../../../../shared/widgets/app_feedback.dart';
 import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../../collections/presentation/widgets/item_collections_widget.dart';
 import '../../../favorites/application/favorite_providers.dart';
@@ -144,46 +144,33 @@ class AlbumDetailsPage extends ConsumerWidget {
                     isLoadingAction: loanActionState.isLoading,
                     isLoadingLoanData: activeLoanDetailsAsync.isLoading,
                     onBorrow: () async {
-                      try {
-                        await ref
-                            .read(loanActionControllerProvider(loanKey).notifier)
-                            .borrow();
-
-                        if (!context.mounted) return;
-                        AppFeedback.success(
-                          context,
-                          resolvedItemType == ItemType.cd
-                              ? 'CD requisitado com sucesso.'
-                              : 'Vinil requisitado com sucesso.',
-                        );
-                      } catch (e) {
-                        if (!context.mounted) return;
-                        AppFeedback.error(
-                          context,
-                          'Não foi possível requisitar ${resolvedItemType == ItemType.cd ? 'CD' : 'Vinil'}: $e',
-                        );
-                      }
+                      await UiActionExecutor.run(
+                        context,
+                        actionName: 'loan_borrow_${resolvedItemType.value}_$albumId',
+                        logCategory: 'loan.ui',
+                        action: () =>
+                            ref.read(loanActionControllerProvider(loanKey).notifier).borrow(),
+                        successMessage: resolvedItemType == ItemType.cd
+                            ? 'CD requisitado com sucesso.'
+                            : 'Vinil requisitado com sucesso.',
+                        errorMessage:
+                            'Não foi possível requisitar ${resolvedItemType == ItemType.cd ? 'CD' : 'Vinil'}.',
+                      );
                     },
                     onReturn: () async {
-                      try {
-                        await ref
+                      await UiActionExecutor.run(
+                        context,
+                        actionName: 'loan_return_${resolvedItemType.value}_$albumId',
+                        logCategory: 'loan.ui',
+                        action: () => ref
                             .read(loanActionControllerProvider(loanKey).notifier)
-                            .returnAlbum();
-
-                        if (!context.mounted) return;
-                        AppFeedback.success(
-                          context,
-                          resolvedItemType == ItemType.cd
-                              ? 'CD devolvido com sucesso.'
-                              : 'Vinil devolvido com sucesso.',
-                        );
-                      } catch (e) {
-                        if (!context.mounted) return;
-                        AppFeedback.error(
-                          context,
-                          'Não foi possível devolver ${resolvedItemType == ItemType.cd ? 'CD' : 'Vinil'}: $e',
-                        );
-                      }
+                            .returnAlbum(),
+                        successMessage: resolvedItemType == ItemType.cd
+                            ? 'CD devolvido com sucesso.'
+                            : 'Vinil devolvido com sucesso.',
+                        errorMessage:
+                            'Não foi possível devolver ${resolvedItemType == ItemType.cd ? 'CD' : 'Vinil'}.',
+                      );
                     },
                   ),
                   const SizedBox(height: 12),
@@ -200,61 +187,49 @@ class AlbumDetailsPage extends ConsumerWidget {
                               isFavorite: isFavorite,
                               isLoading: favoriteActionState.isLoading,
                               onPressed: () async {
-                                try {
-                                  await ref
+                                await UiActionExecutor.run(
+                                  context,
+                                  actionName: 'toggle_favorite_${resolvedItemType.value}_$albumId',
+                                  logCategory: 'favorite.ui',
+                                  action: () => ref
                                       .read(
                                         favoriteItemToggleControllerProvider(favoriteKey).notifier,
                                       )
-                                      .toggle(isFavorite: isFavorite);
-
-                                  if (!context.mounted) return;
-                                  AppFeedback.success(
-                                    context,
-                                    isFavorite
-                                        ? 'Item removido dos favoritos.'
-                                        : 'Item adicionado aos favoritos.',
-                                  );
-                                } catch (e) {
-                                  if (!context.mounted) return;
-                                  AppFeedback.error(
-                                    context,
-                                    'Não foi possível atualizar favorito: $e',
-                                  );
-                                }
+                                      .toggle(isFavorite: isFavorite),
+                                  successMessage: isFavorite
+                                      ? 'Item removido dos favoritos.'
+                                      : 'Item adicionado aos favoritos.',
+                                  errorMessage: 'Não foi possível atualizar favorito.',
+                                );
                               },
                             ),
                             WishlistButton(
                               isInWishlist: currentWishlistItem != null,
                               isLoading: false,
                               onPressed: () async {
-                                try {
-                                  final actions = ref.read(favoriteActionsProvider);
-                                  if (currentWishlistItem != null) {
-                                    await actions.removeWishlist(currentWishlistItem);
-                                  } else {
-                                    await actions.createWishlistItem(
-                                      title: details.album.title,
-                                      itemType: resolvedItemType,
-                                      artistId: details.artist.id,
-                                      artistName: details.artist.name,
-                                      formatEdition: details.album.formatEdition,
-                                    );
-                                  }
-
-                                  if (!context.mounted) return;
-                                  AppFeedback.success(
-                                    context,
-                                    currentWishlistItem != null
-                                        ? 'Item removido da wishlist.'
-                                        : 'Item adicionado à wishlist.',
-                                  );
-                                } catch (e) {
-                                  if (!context.mounted) return;
-                                  AppFeedback.error(
-                                    context,
-                                    'Não foi possível atualizar a wishlist: $e',
-                                  );
-                                }
+                                await UiActionExecutor.run(
+                                  context,
+                                  actionName: 'toggle_wishlist_${resolvedItemType.value}_$albumId',
+                                  logCategory: 'wishlist.ui',
+                                  action: () async {
+                                    final actions = ref.read(favoriteActionsProvider);
+                                    if (currentWishlistItem != null) {
+                                      await actions.removeWishlist(currentWishlistItem);
+                                    } else {
+                                      await actions.createWishlistItem(
+                                        title: details.album.title,
+                                        itemType: resolvedItemType,
+                                        artistId: details.artist.id,
+                                        artistName: details.artist.name,
+                                        formatEdition: details.album.formatEdition,
+                                      );
+                                    }
+                                  },
+                                  successMessage: currentWishlistItem != null
+                                      ? 'Item removido da wishlist.'
+                                      : 'Item adicionado à wishlist.',
+                                  errorMessage: 'Não foi possível atualizar a wishlist.',
+                                );
                               },
                             ),
                           ],
@@ -289,30 +264,26 @@ class AlbumDetailsPage extends ConsumerWidget {
                     initialNote: currentNote,
                     isBusy: noteActionState.isLoading,
                     onSave: (note) async {
-                      try {
-                        await ref
-                            .read(itemNoteEditorControllerProvider(noteKey).notifier)
-                            .save(note);
-
-                        if (!context.mounted) return;
-                        AppFeedback.success(context, 'Nota guardada com sucesso.');
-                      } catch (e) {
-                        if (!context.mounted) return;
-                        AppFeedback.error(context, 'Não foi possível guardar a nota: $e');
-                      }
+                      await UiActionExecutor.run(
+                        context,
+                        actionName: 'note_save_${resolvedItemType.value}_$albumId',
+                        logCategory: 'note.ui',
+                        action: () =>
+                            ref.read(itemNoteEditorControllerProvider(noteKey).notifier).save(note),
+                        successMessage: 'Nota guardada com sucesso.',
+                        errorMessage: 'Não foi possível guardar a nota.',
+                      );
                     },
                     onDelete: () async {
-                      try {
-                        await ref
-                            .read(itemNoteEditorControllerProvider(noteKey).notifier)
-                            .delete();
-
-                        if (!context.mounted) return;
-                        AppFeedback.success(context, 'Nota apagada com sucesso.');
-                      } catch (e) {
-                        if (!context.mounted) return;
-                        AppFeedback.error(context, 'Não foi possível apagar a nota: $e');
-                      }
+                      await UiActionExecutor.run(
+                        context,
+                        actionName: 'note_delete_${resolvedItemType.value}_$albumId',
+                        logCategory: 'note.ui',
+                        action: () =>
+                            ref.read(itemNoteEditorControllerProvider(noteKey).notifier).delete(),
+                        successMessage: 'Nota apagada com sucesso.',
+                        errorMessage: 'Não foi possível apagar a nota.',
+                      );
                     },
                   ),
                 ],

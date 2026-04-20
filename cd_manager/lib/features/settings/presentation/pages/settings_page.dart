@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../shared/application/ui_action_executor.dart';
 import '../../../../shared/widgets/app_error_state.dart';
 import '../../../../shared/widgets/app_feedback.dart';
 import '../../../../shared/widgets/loading_skeleton.dart';
@@ -15,18 +16,22 @@ class SettingsPage extends ConsumerWidget {
     WidgetRef ref,
     ThemeMode selectedMode,
   ) async {
-    try {
-      await ref.read(themeModeControllerProvider.notifier).setThemeMode(selectedMode);
-      if (!context.mounted) return;
-      final label = switch (selectedMode) {
-        ThemeMode.system => 'sistema',
-        ThemeMode.light => 'claro',
-        ThemeMode.dark => 'escuro',
-      };
+    final label = switch (selectedMode) {
+      ThemeMode.system => 'sistema',
+      ThemeMode.light => 'claro',
+      ThemeMode.dark => 'escuro',
+    };
+
+    final success = await UiActionExecutor.run(
+      context,
+      actionName: 'set_theme_mode_$label',
+      logCategory: 'settings.ui',
+      action: () => ref.read(themeModeControllerProvider.notifier).setThemeMode(selectedMode),
+      errorMessage: 'Não foi possível atualizar tema.',
+    );
+
+    if (success && context.mounted) {
       AppFeedback.info(context, 'Tema atualizado para $label.');
-    } catch (error) {
-      if (!context.mounted) return;
-      AppFeedback.error(context, 'Não foi possível atualizar tema: $error');
     }
   }
 

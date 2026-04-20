@@ -1,5 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/utils/app_logger.dart';
 import 'loan_providers.dart';
 
 final loanActionControllerProvider =
@@ -17,10 +17,23 @@ class LoanActionController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncLoading();
 
     try {
-      debugPrint('[LoanActionController] borrow albumId=${_key.albumId} type=${_key.itemType.value}');
+      AppLogger.info(
+        'borrow start albumId=${_key.albumId} type=${_key.itemType.value}',
+        category: 'loans',
+      );
       await _ref.read(loanActionsProvider).borrowAlbum(_key.albumId, _key.itemType);
       state = const AsyncData(null);
+      AppLogger.info(
+        'borrow success albumId=${_key.albumId} type=${_key.itemType.value}',
+        category: 'loans',
+      );
     } catch (error, stackTrace) {
+      AppLogger.error(
+        'borrow failed albumId=${_key.albumId} type=${_key.itemType.value}',
+        category: 'loans',
+        error: error,
+        stackTrace: stackTrace,
+      );
       state = AsyncError(error, stackTrace);
       rethrow;
     }
@@ -30,10 +43,23 @@ class LoanActionController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncLoading();
 
     try {
-      debugPrint('[LoanActionController] returnAlbum albumId=${_key.albumId} type=${_key.itemType.value}');
+      AppLogger.info(
+        'return start albumId=${_key.albumId} type=${_key.itemType.value}',
+        category: 'loans',
+      );
       await _ref.read(loanActionsProvider).returnAlbum(_key.albumId, _key.itemType);
       state = const AsyncData(null);
+      AppLogger.info(
+        'return success albumId=${_key.albumId} type=${_key.itemType.value}',
+        category: 'loans',
+      );
     } catch (error, stackTrace) {
+      AppLogger.error(
+        'return failed albumId=${_key.albumId} type=${_key.itemType.value}',
+        category: 'loans',
+        error: error,
+        stackTrace: stackTrace,
+      );
       state = AsyncError(error, stackTrace);
       rethrow;
     }

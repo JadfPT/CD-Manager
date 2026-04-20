@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../../shared/application/ui_action_executor.dart';
 import '../../../../shared/widgets/app_error_state.dart';
 import '../../../../shared/widgets/app_feedback.dart';
 import '../../../../shared/widgets/loading_skeleton.dart';
@@ -45,6 +46,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     );
 
     if (picked == null) return;
+    if (!mounted) return;
 
     try {
       setState(() {
@@ -54,20 +56,31 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       final bytes = await picked.readAsBytes();
       final nameParts = picked.name.split('.');
       final extension = nameParts.length > 1 ? nameParts.last : 'jpg';
+      if (!mounted) return;
 
-      final url = await ref.read(profileActionsProvider).uploadAvatar(
-            fileBytes: bytes,
-            fileExtension: extension,
-          );
+      String? uploadedUrl;
+      final success = await UiActionExecutor.run(
+        context,
+        actionName: 'profile_upload_avatar',
+        logCategory: 'profile.ui',
+        action: () async {
+          uploadedUrl = await ref
+              .read(profileUpdateControllerProvider.notifier)
+              .uploadAvatar(
+                fileBytes: bytes,
+                fileExtension: extension,
+              );
+        },
+        successMessage: 'Avatar atualizado com sucesso.',
+        errorMessage: 'Não foi possível carregar avatar.',
+      );
+
+      if (!success || uploadedUrl == null) return;
 
       if (!mounted) return;
       setState(() {
-        _avatarUrlController.text = url;
+        _avatarUrlController.text = uploadedUrl!;
       });
-      AppFeedback.success(context, 'Avatar atualizado com sucesso.');
-    } catch (e) {
-      if (!mounted) return;
-      AppFeedback.error(context, 'Não foi possível carregar avatar: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -83,26 +96,24 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       return;
     }
 
-    try {
-      await ref.read(profileUpdateControllerProvider.notifier).save(
+    await UiActionExecutor.run(
+      context,
+      actionName: 'profile_save',
+      logCategory: 'profile.ui',
+      action: () => ref.read(profileUpdateControllerProvider.notifier).save(
             username: _usernameController.text.trim(),
             displayName: _displayNameController.text.trim(),
             avatarUrl: _avatarUrlController.text.trim(),
-          );
-
-      if (!mounted) return;
-      AppFeedback.success(context, 'Perfil atualizado com sucesso.');
-    } catch (e) {
-      if (!mounted) return;
-      AppFeedback.error(context, 'Não foi possível atualizar perfil: $e');
-    }
+          ),
+      successMessage: 'Perfil atualizado com sucesso.',
+      errorMessage: 'Não foi possível atualizar perfil.',
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(currentProfileProvider);
-    final statsAsync = ref.watch(profileLibraryStatsProvider);
-    final recentItemsAsync = ref.watch(recentAddedItemsProvider);
+    final overviewAsync = ref.watch(profileOverviewProvider);
     final updateState = ref.watch(profileUpdateControllerProvider);
     final authState = ref.watch(authProvider);
 
@@ -163,7 +174,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 onSave: _saveProfile,
               ),
               const SizedBox(height: 12),
-              statsAsync.when(
+              overviewAsync.when(
                 loading: () => const Card(
                   child: Padding(
                     padding: EdgeInsets.all(16),
@@ -187,12 +198,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 ),
                 error: (error, _) => AppErrorState(
                   message: error.toString(),
-                  onRetry: () => ref.invalidate(profileLibraryStatsProvider),
+                  onRetry: () => ref.invalidate(profileOverviewProvider),
                 ),
-                data: (stats) => ProfileStatsGrid(stats: stats),
+                data: (overview) => ProfileStatsGrid(stats: overview.stats),
               ),
               const SizedBox(height: 12),
-              recentItemsAsync.when(
+              overviewAsync.when(
                 loading: () => const Card(
                   child: Padding(
                     padding: EdgeInsets.all(16),
@@ -212,9 +223,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 ),
                 error: (error, _) => AppErrorState(
                   message: error.toString(),
-                  onRetry: () => ref.invalidate(recentAddedItemsProvider),
+                  onRetry: () => ref.invalidate(profileOverviewProvider),
                 ),
-                data: (items) => RecentItemsSection(items: items),
+                data: (overview) => RecentItemsSection(items: overview.recentItems),
               ),
               const SizedBox(height: 12),
               if (profile?.isAdmin ?? false) ...[

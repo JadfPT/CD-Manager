@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../application/profile_providers.dart';
+import '../../../../shared/widgets/app_network_image.dart';
 import '../../../../shared/widgets/app_section_card.dart';
 
 class ProfileHeaderCard extends StatelessWidget {
@@ -131,7 +132,6 @@ class _ClickableAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hasUrl = avatarUrl != null && avatarUrl!.trim().isNotEmpty;
     final colors = Theme.of(context).colorScheme;
 
     return InkWell(
@@ -139,17 +139,20 @@ class _ClickableAvatar extends StatelessWidget {
       onTap: isUploading ? null : () => onTap(),
       child: Stack(
         children: [
-          CircleAvatar(
-            radius: 46,
-            backgroundColor: colors.surfaceContainerHighest,
-            foregroundImage: hasUrl ? NetworkImage(avatarUrl!) : null,
-            child: hasUrl
-                ? null
-                : Icon(
-                    Icons.person,
-                    size: 38,
-                    color: colors.onSurfaceVariant,
-                  ),
+          AppNetworkImage(
+            imageUrl: avatarUrl,
+            width: 92,
+            height: 92,
+            borderRadius: BorderRadius.circular(999),
+            placeholder: Container(
+              color: colors.surfaceContainerHighest,
+              alignment: Alignment.center,
+              child: Icon(
+                Icons.person,
+                size: 38,
+                color: colors.onSurfaceVariant,
+              ),
+            ),
           ),
           Positioned(
             right: 0,

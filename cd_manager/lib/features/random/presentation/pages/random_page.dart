@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,9 +7,11 @@ import '../../../../features/favorites/application/favorite_providers.dart';
 import '../../../../shared/models/album_list_item.dart';
 import '../../../../shared/models/artist.dart';
 import '../../../../shared/models/item_type.dart';
+import '../../../../shared/application/ui_action_executor.dart';
 import '../../../../shared/widgets/app_feedback.dart';
-
-enum RandomTypeFilter { all, cd, vinyl, artist }
+import '../../../../shared/widgets/app_network_image.dart';
+import '../../application/random_controller.dart';
+import '../../application/random_models.dart';
 
 class RandomPage extends ConsumerStatefulWidget {
   const RandomPage({super.key});
@@ -20,29 +21,22 @@ class RandomPage extends ConsumerStatefulWidget {
 }
 
 class _RandomPageState extends ConsumerState<RandomPage> {
-  final _rng = Random();
-  RandomTypeFilter _typeFilter = RandomTypeFilter.all;
-  bool _favoritesOnly = false;
-  bool _isRolling = false;
-  int _resultVersion = 0;
-
-  AlbumListItem? _pickedItem;
-  Artist? _pickedArtist;
-  String? _statusText;
-
   @override
   Widget build(BuildContext context) {
-    final itemsAsync = _favoritesOnly
+    final state = ref.watch(randomControllerProvider);
+
+    final itemsAsync = state.favoritesOnly
         ? ref.watch(favoriteItemsProvider)
         : ref.watch(albumListItemsProvider(const AlbumFilters()));
-    final artistsAsync = _favoritesOnly
+    final artistsAsync = state.favoritesOnly
         ? ref.watch(favoriteArtistsProvider)
         : ref.watch(artistsProvider);
 
-    final possibleCount = _possibleResultsCount(
-      items: itemsAsync.valueOrNull ?? const <AlbumListItem>[],
-      artists: artistsAsync.valueOrNull ?? const <Artist>[],
-    );
+    final possibleCount = ref.read(randomServiceProvider).possibleResultsCount(
+          typeFilter: state.typeFilter,
+          items: itemsAsync.valueOrNull ?? const <AlbumListItem>[],
+          artists: artistsAsync.valueOrNull ?? const <Artist>[],
+        );
 
     return Scaffold(
       appBar: AppBar(title: const Text('Random 🎲')),
@@ -61,11 +55,11 @@ class _RandomPageState extends ConsumerState<RandomPage> {
                   ),
                   const SizedBox(height: 10),
                   SegmentedButton<RandomTypeFilter>(
-                    selected: {_typeFilter},
+                    selected: {state.typeFilter},
                     onSelectionChanged: (selection) {
-                      setState(() {
-                        _typeFilter = selection.first;
-                      });
+                      ref
+                          .read(randomControllerProvider.notifier)
+                          .setTypeFilter(selection.first);
                     },
                     showSelectedIcon: false,
                     segments: const [
@@ -80,11 +74,9 @@ class _RandomPageState extends ConsumerState<RandomPage> {
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Só favoritos'),
                     subtitle: const Text('Usa apenas favoritos na seleção'),
-                    value: _favoritesOnly,
+                    value: state.favoritesOnly,
                     onChanged: (value) {
-                      setState(() {
-                        _favoritesOnly = value;
-                      });
+                      ref.read(randomControllerProvider.notifier).setFavoritesOnly(value);
                     },
                   ),
                   const SizedBox(height: 8),
@@ -119,19 +111,38 @@ class _RandomPageState extends ConsumerState<RandomPage> {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed: _isRolling || possibleCount == 0
+                      onPressed: state.isRolling || possibleCount == 0
                           ? null
                           : () async {
-                              await _drawRandom(ref);
+                              final success = await UiActionExecutor.run(
+                                context,
+                                actionName: 'random_draw',
+                                logCategory: 'random.ui',
+                                action: () =>
+                                    ref.read(randomControllerProvider.notifier).draw(),
+                                errorMessage: 'Erro ao sortear item random.',
+                              );
+
+                              if (!success || !context.mounted) return;
+
+                              final latest = ref.read(randomControllerProvider);
+                              if (latest.statusText ==
+                                      'Sem artistas para sortear com os filtros atuais.' ||
+                                  latest.statusText ==
+                                      'Nada para sortear com os filtros atuais.' ||
+                                  latest.statusText ==
+                                      'Sem itens para sortear com os filtros atuais.') {
+                                AppFeedback.info(context, latest.statusText!);
+                              }
                             },
-                      icon: _isRolling
+                      icon: state.isRolling
                           ? const SizedBox(
                               width: 16,
                               height: 16,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.casino_outlined),
-                      label: Text(_isRolling ? 'A sortear...' : 'Sortear'),
+                      label: Text(state.isRolling ? 'A sortear...' : 'Sortear'),
                     ),
                   ),
                 ],
@@ -139,7 +150,7 @@ class _RandomPageState extends ConsumerState<RandomPage> {
             ),
           ),
           const SizedBox(height: 12),
-          if (_statusText != null)
+          if (state.statusText != null)
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -152,8 +163,8 @@ class _RandomPageState extends ConsumerState<RandomPage> {
                     );
                   },
                   child: Text(
-                    _statusText!,
-                    key: ValueKey(_resultVersion),
+                    state.statusText!,
+                    key: ValueKey(state.resultVersion),
                     style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
@@ -161,11 +172,11 @@ class _RandomPageState extends ConsumerState<RandomPage> {
                 ),
               ),
             ),
-          if (_pickedItem != null)
+          if (state.pickedItem != null)
             const SizedBox(height: 24),
-          if (_pickedItem != null)
+          if (state.pickedItem != null)
             TweenAnimationBuilder<double>(
-              key: ValueKey('item-${_pickedItem!.albumId}-$_resultVersion'),
+              key: ValueKey('item-${state.pickedItem!.albumId}-${state.resultVersion}'),
               tween: Tween(begin: 0.94, end: 1),
               duration: const Duration(milliseconds: 280),
               curve: Curves.easeOutBack,
@@ -175,11 +186,11 @@ class _RandomPageState extends ConsumerState<RandomPage> {
                   child: Transform.scale(scale: value, child: child),
                 );
               },
-              child: _SpotifyLikeAlbumResult(item: _pickedItem!),
+              child: _SpotifyLikeAlbumResult(item: state.pickedItem!),
             ),
-          if (_pickedArtist != null)
+          if (state.pickedArtist != null)
             TweenAnimationBuilder<double>(
-              key: ValueKey('artist-${_pickedArtist!.id}-$_resultVersion'),
+              key: ValueKey('artist-${state.pickedArtist!.id}-${state.resultVersion}'),
               tween: Tween(begin: 0.94, end: 1),
               duration: const Duration(milliseconds: 280),
               curve: Curves.easeOutBack,
@@ -189,134 +200,11 @@ class _RandomPageState extends ConsumerState<RandomPage> {
                   child: Transform.scale(scale: value, child: child),
                 );
               },
-              child: _SpotifyLikeArtistResult(artist: _pickedArtist!),
+              child: _SpotifyLikeArtistResult(artist: state.pickedArtist!),
             ),
         ],
       ),
     );
-  }
-
-  int _possibleResultsCount({
-    required List<AlbumListItem> items,
-    required List<Artist> artists,
-  }) {
-    switch (_typeFilter) {
-      case RandomTypeFilter.cd:
-        return items.where((item) => item.itemType == ItemType.cd).length;
-      case RandomTypeFilter.vinyl:
-        return items.where((item) => item.itemType == ItemType.vinyl).length;
-      case RandomTypeFilter.artist:
-        return artists.length;
-      case RandomTypeFilter.all:
-        return items.length + artists.length;
-    }
-  }
-
-  Future<void> _drawRandom(WidgetRef ref) async {
-    setState(() {
-      _isRolling = true;
-      _pickedItem = null;
-      _pickedArtist = null;
-      _statusText = null;
-    });
-
-    try {
-      await Future<void>.delayed(const Duration(milliseconds: 450));
-
-      final items = _favoritesOnly
-          ? await ref.read(favoriteItemsProvider.future)
-          : await ref.read(albumListItemsProvider(const AlbumFilters()).future);
-      final artists = _favoritesOnly
-          ? await ref.read(favoriteArtistsProvider.future)
-          : await ref.read(artistsProvider.future);
-
-      final filteredItems = switch (_typeFilter) {
-        RandomTypeFilter.cd =>
-          items.where((item) => item.itemType == ItemType.cd).toList(),
-        RandomTypeFilter.vinyl =>
-          items.where((item) => item.itemType == ItemType.vinyl).toList(),
-        RandomTypeFilter.artist => <AlbumListItem>[],
-        RandomTypeFilter.all => items,
-      };
-
-      if (_typeFilter == RandomTypeFilter.artist) {
-        if (artists.isEmpty) {
-          setState(() {
-            _statusText = 'Sem artistas para sortear com os filtros atuais.';
-            _isRolling = false;
-          });
-          if (mounted) {
-            AppFeedback.info(context, 'Sem artistas com os filtros atuais.');
-          }
-          return;
-        }
-
-        final picked = artists[_rng.nextInt(artists.length)];
-        setState(() {
-          _pickedArtist = picked;
-          _statusText = 'Saiu artista!';
-          _resultVersion++;
-          _isRolling = false;
-        });
-        return;
-      }
-
-      if (_typeFilter == RandomTypeFilter.all) {
-        final choices = <String>[];
-        if (filteredItems.isNotEmpty) choices.add('item');
-        if (artists.isNotEmpty) choices.add('artist');
-
-        if (choices.isEmpty) {
-          setState(() {
-            _statusText = 'Nada para sortear com os filtros atuais.';
-            _isRolling = false;
-          });
-          if (mounted) {
-            AppFeedback.info(context, 'Ajusta os filtros para fazer sorteio.');
-          }
-          return;
-        }
-
-        final kind = choices[_rng.nextInt(choices.length)];
-        if (kind == 'artist') {
-          final picked = artists[_rng.nextInt(artists.length)];
-          setState(() {
-            _pickedArtist = picked;
-            _statusText = 'Saiu artista!';
-            _resultVersion++;
-            _isRolling = false;
-          });
-          return;
-        }
-      }
-
-      if (filteredItems.isEmpty) {
-        setState(() {
-          _statusText = 'Sem itens para sortear com os filtros atuais.';
-          _isRolling = false;
-        });
-        if (mounted) {
-          AppFeedback.info(context, 'Sem itens com os filtros atuais.');
-        }
-        return;
-      }
-
-      final picked = filteredItems[_rng.nextInt(filteredItems.length)];
-      setState(() {
-        _pickedItem = picked;
-        _statusText = 'Saiu item!';
-        _resultVersion++;
-        _isRolling = false;
-      });
-    } catch (e) {
-      setState(() {
-        _statusText = 'Erro ao sortear: $e';
-        _isRolling = false;
-      });
-      if (mounted) {
-        AppFeedback.error(context, 'Erro ao sortear item random: $e');
-      }
-    }
   }
 }
 
@@ -348,14 +236,12 @@ class _SpotifyLikeAlbumResult extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
                 child: AspectRatio(
                   aspectRatio: 1,
-                  child: (item.coverUrl != null && item.coverUrl!.trim().isNotEmpty)
-                      ? Image.network(
-                          item.coverUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              _coverFallback(context),
-                        )
-                      : _coverFallback(context),
+                  child: AppNetworkImage(
+                    imageUrl: item.coverUrl,
+                    width: double.infinity,
+                    height: double.infinity,
+                    placeholder: _coverFallback(context),
+                  ),
                 ),
               ),
               const SizedBox(height: 12),
@@ -436,14 +322,19 @@ class _SpotifyLikeArtistResult extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 28,
-                backgroundImage: artist.imageUrl == null || artist.imageUrl!.trim().isEmpty
-                    ? null
-                    : NetworkImage(artist.imageUrl!.trim()),
-                child: artist.imageUrl == null || artist.imageUrl!.trim().isEmpty
-                    ? Text(
-                        artist.name.isNotEmpty ? artist.name[0].toUpperCase() : '?',
-                      )
-                    : null,
+                child: AppNetworkImage(
+                  imageUrl: artist.imageUrl,
+                  width: 56,
+                  height: 56,
+                  borderRadius: BorderRadius.circular(999),
+                  placeholder: Container(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    alignment: Alignment.center,
+                    child: Text(
+                      artist.name.isNotEmpty ? artist.name[0].toUpperCase() : '?',
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(

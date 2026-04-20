@@ -28,6 +28,16 @@ class ProfileLibraryStats {
   final int offShelfCount;
 }
 
+class ProfileOverviewData {
+  const ProfileOverviewData({
+    required this.stats,
+    required this.recentItems,
+  });
+
+  final ProfileLibraryStats stats;
+  final List<AlbumListItem> recentItems;
+}
+
 final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
   return ProfileRepository();
 });
@@ -50,7 +60,7 @@ final currentProfileProvider = FutureProvider<Profile?>((ref) async {
   return repository.getProfileById(userId);
 });
 
-final profileLibraryStatsProvider = FutureProvider<ProfileLibraryStats>((ref) async {
+final profileOverviewProvider = FutureProvider<ProfileOverviewData>((ref) async {
   final items = await ref.watch(albumListItemsProvider(const AlbumFilters()).future);
   final favoriteItems = await ref.watch(favoriteItemsProvider.future);
   final favoriteArtists = await ref.watch(favoriteArtistsProvider.future);
@@ -60,7 +70,7 @@ final profileLibraryStatsProvider = FutureProvider<ProfileLibraryStats>((ref) as
   final vinylCount = items.where((item) => item.itemType == ItemType.vinyl).length;
   final offShelfCount = items.where((item) => !item.onShelf).length;
 
-  return ProfileLibraryStats(
+  final stats = ProfileLibraryStats(
     cdCount: cdCount,
     vinylCount: vinylCount,
     totalItemsCount: items.length,
@@ -69,17 +79,28 @@ final profileLibraryStatsProvider = FutureProvider<ProfileLibraryStats>((ref) as
     wishlistCount: wishlist.length,
     offShelfCount: offShelfCount,
   );
-});
 
-final recentAddedItemsProvider = FutureProvider<List<AlbumListItem>>((ref) async {
-  final items = await ref.watch(albumListItemsProvider(const AlbumFilters()).future);
   final sorted = [...items]
     ..sort((a, b) {
       final aDate = a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
       final bDate = b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
       return bDate.compareTo(aDate);
     });
-  return sorted.take(5).toList();
+
+  return ProfileOverviewData(
+    stats: stats,
+    recentItems: sorted.take(5).toList(),
+  );
+});
+
+final profileLibraryStatsProvider = FutureProvider<ProfileLibraryStats>((ref) async {
+  final overview = await ref.watch(profileOverviewProvider.future);
+  return overview.stats;
+});
+
+final recentAddedItemsProvider = FutureProvider<List<AlbumListItem>>((ref) async {
+  final overview = await ref.watch(profileOverviewProvider.future);
+  return overview.recentItems;
 });
 
 final profileActionsProvider = Provider<ProfileActions>((ref) {
