@@ -72,7 +72,11 @@ class CollectionRepository {
           .from('item_collections')
           .select('id, name, description, created_at, updated_at')
           .eq('id', collectionId)
-          .single();
+          .maybeSingle();
+
+      if (collData == null) {
+        throw AppException(message: 'Coleção não encontrada ou sem permissão de acesso.');
+      }
 
       final collection = Collection.fromMap(collData);
 

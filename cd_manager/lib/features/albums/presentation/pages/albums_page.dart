@@ -98,51 +98,93 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: SegmentedButton<ItemTypeFilter>(
-              segments: const [
-                ButtonSegment(
-                  value: ItemTypeFilter.all,
-                  label: Text('Todos'),
-                ),
-                ButtonSegment(
-                  value: ItemTypeFilter.cd,
-                  label: Text('CDs'),
-                ),
-                ButtonSegment(
-                  value: ItemTypeFilter.vinyl,
-                  label: Text('Vinis'),
-                ),
-              ],
-              selected: {typeFilter},
-              onSelectionChanged: (selection) {
-                ref.read(itemTypeFilterProvider.notifier).state = selection.first;
-              },
-              showSelectedIcon: false,
-            ),
-          ),
-          Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: SegmentedButton<AlbumShelfFilter>(
-              segments: const [
-                ButtonSegment(
-                  value: AlbumShelfFilter.all,
-                  label: Text('Todos'),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Tipo',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _FilterPill(
+                            label: 'Todos',
+                            selected: typeFilter == ItemTypeFilter.all,
+                            onTap: () =>
+                                ref.read(itemTypeFilterProvider.notifier).state =
+                                    ItemTypeFilter.all,
+                          ),
+                          const SizedBox(width: 8),
+                          _FilterPill(
+                            label: 'CDs',
+                            selected: typeFilter == ItemTypeFilter.cd,
+                            onTap: () =>
+                                ref.read(itemTypeFilterProvider.notifier).state =
+                                    ItemTypeFilter.cd,
+                          ),
+                          const SizedBox(width: 8),
+                          _FilterPill(
+                            label: 'Vinis',
+                            selected: typeFilter == ItemTypeFilter.vinyl,
+                            onTap: () =>
+                                ref.read(itemTypeFilterProvider.notifier).state =
+                                    ItemTypeFilter.vinyl,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Localização',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _FilterPill(
+                            label: 'Todos',
+                            selected: filter == AlbumShelfFilter.all,
+                            onTap: () =>
+                                ref.read(albumShelfFilterProvider.notifier).state =
+                                    AlbumShelfFilter.all,
+                          ),
+                          const SizedBox(width: 8),
+                          _FilterPill(
+                            label: 'Na prateleira',
+                            selected: filter == AlbumShelfFilter.onShelf,
+                            onTap: () =>
+                                ref.read(albumShelfFilterProvider.notifier).state =
+                                    AlbumShelfFilter.onShelf,
+                          ),
+                          const SizedBox(width: 8),
+                          _FilterPill(
+                            label: 'Fora da prateleira',
+                            selected: filter == AlbumShelfFilter.outsideShelf,
+                            onTap: () =>
+                                ref.read(albumShelfFilterProvider.notifier).state =
+                                    AlbumShelfFilter.outsideShelf,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                ButtonSegment(
-                  value: AlbumShelfFilter.onShelf,
-                  label: Text('Na prateleira'),
-                ),
-                ButtonSegment(
-                  value: AlbumShelfFilter.outsideShelf,
-                  label: Text('Fora da prateleira'),
-                ),
-              ],
-              selected: {filter},
-              onSelectionChanged: (selection) {
-                ref.read(albumShelfFilterProvider.notifier).state = selection.first;
-              },
-              showSelectedIcon: false,
+              ),
             ),
           ),
           Expanded(
@@ -216,6 +258,55 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FilterPill extends StatelessWidget {
+  const _FilterPill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        color: selected
+            ? theme.colorScheme.primary.withValues(alpha: 0.22)
+            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+        border: Border.all(
+          color: selected
+              ? theme.colorScheme.primary.withValues(alpha: 0.55)
+              : theme.colorScheme.outline.withValues(alpha: 0.25),
+        ),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Text(
+            label,
+            style: theme.textTheme.labelLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: selected
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
       ),
     );
   }

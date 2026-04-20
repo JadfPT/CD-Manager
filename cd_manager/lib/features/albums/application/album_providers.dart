@@ -4,6 +4,7 @@ import '../../../shared/models/album_detail_view.dart';
 import '../../../shared/models/album_list_item.dart';
 import '../../../shared/models/item_type.dart';
 import '../../../shared/repositories/album_repository.dart';
+import '../../auth/application/auth_providers.dart';
 
 class AlbumFilters {
   const AlbumFilters({
@@ -61,6 +62,11 @@ final albumsProvider = FutureProvider.family<List<Album>, bool?>((ref, onShelf) 
 
 final albumListItemsProvider =
     FutureProvider.family<List<AlbumListItem>, AlbumFilters>((ref, filters) {
+  final authState = ref.watch(authProvider);
+  if (authState is! AuthSuccess) {
+    return Future.value(const <AlbumListItem>[]);
+  }
+
   final repository = ref.watch(albumRepositoryProvider);
   return repository.listAllItemsUnified(
     searchText: filters.searchText,

@@ -30,9 +30,9 @@ class FavoritesPage extends ConsumerWidget {
             ),
           ],
           bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(58),
+            preferredSize: const Size.fromHeight(74),
             child: Container(
-              margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+              margin: const EdgeInsets.fromLTRB(12, 6, 12, 12),
               padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
                 color: Theme.of(context)
