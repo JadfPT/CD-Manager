@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../shared/widgets/app_section_card.dart';
 
 class NoteEditorCard extends StatefulWidget {
   const NoteEditorCard({
@@ -50,25 +51,19 @@ class _NoteEditorCardState extends State<NoteEditorCard> {
   Widget build(BuildContext context) {
     final hasText = _controller.text.trim().isNotEmpty;
 
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'A minha nota',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 10),
+    return AppSectionCard(
+      title: 'A minha nota',
+      subtitle: 'Guarda notas pessoais sobre este item',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
             TextField(
               controller: _controller,
               minLines: 4,
               maxLines: 8,
               onChanged: (_) => setState(() {}),
               decoration: const InputDecoration(
-                hintText: 'Escreve uma nota pessoal sobre este CD...',
+                hintText: 'Escreve uma nota pessoal...',
               ),
             ),
             const SizedBox(height: 12),
@@ -109,7 +104,6 @@ class _NoteEditorCardState extends State<NoteEditorCard> {
             ),
           ],
         ),
-      ),
     );
   }
 }

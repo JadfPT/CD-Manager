@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/models/album_detail_view.dart';
+import '../../../../shared/widgets/app_section_card.dart';
 import 'shelf_status_chip.dart';
 
 class AlbumMetaSection extends StatelessWidget {
@@ -15,40 +16,28 @@ class AlbumMetaSection extends StatelessWidget {
     final album = details.album;
     final artist = details.artist;
 
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Informação do item',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: [
-                _InfoBlock(
-                  label: 'ID',
-                  value: '#${album.id}',
-                ),
-                _InfoBlock(
-                  label: 'Artista ID',
-                  value: '#${album.artistId}',
-                ),
-                if (album.formatEdition != null &&
-                    album.formatEdition!.trim().isNotEmpty)
-                  _InfoBlock(label: 'Formato', value: album.formatEdition!),
-                if (artist.genreText != null && artist.genreText!.trim().isNotEmpty)
-                  _InfoBlock(label: 'Género', value: artist.genreText!),
-                ShelfStatusChip(onShelf: album.onShelf),
-              ],
-            ),
-          ],
-        ),
+    return AppSectionCard(
+      title: 'Informação do item',
+      subtitle: 'Metadados e identificadores',
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        children: [
+          _InfoBlock(
+            label: 'ID',
+            value: '#${album.id}',
+          ),
+          _InfoBlock(
+            label: 'Artista ID',
+            value: '#${album.artistId}',
+          ),
+          if (album.formatEdition != null &&
+              album.formatEdition!.trim().isNotEmpty)
+            _InfoBlock(label: 'Formato', value: album.formatEdition!),
+          if (artist.genreText != null && artist.genreText!.trim().isNotEmpty)
+            _InfoBlock(label: 'Género', value: artist.genreText!),
+          ShelfStatusChip(onShelf: album.onShelf),
+        ],
       ),
     );
   }

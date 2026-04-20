@@ -6,8 +6,10 @@ import '../../../../shared/models/album_detail_view.dart';
 import '../../../../shared/models/album_loan.dart';
 import '../../../../shared/models/item_type.dart';
 import '../../../../shared/models/wishlist_item.dart';
+import '../../../../shared/widgets/app_section_card.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_error_state.dart';
+import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../../collections/presentation/widgets/item_collections_widget.dart';
 import '../../../favorites/application/favorite_providers.dart';
 import '../../../favorites/application/favorite_toggle_controller.dart';
@@ -71,7 +73,7 @@ class AlbumDetailsPage extends ConsumerWidget {
         ],
       ),
       body: detailsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const _AlbumDetailsSkeleton(),
         error: (error, stackTrace) => AppErrorState(
           message: error.toString(),
           onRetry: () => ref.invalidate(albumDetailsProvider(key)),
@@ -131,99 +133,6 @@ class AlbumDetailsPage extends ConsumerWidget {
                         ? Colors.cyan
                         : Colors.purple,
                   ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      FavoriteButton(
-                        isFavorite: isFavorite,
-                        isLoading: favoriteActionState.isLoading,
-                        onPressed: () async {
-                          try {
-                            await ref
-                                .read(
-                                  favoriteItemToggleControllerProvider(favoriteKey).notifier,
-                                )
-                                .toggle(isFavorite: isFavorite);
-
-                            if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  isFavorite
-                                      ? 'Removido dos favoritos'
-                                      : 'Adicionado aos favoritos',
-                                ),
-                              ),
-                            );
-                          } catch (e) {
-                            if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Erro ao atualizar favorito: $e'),
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                      WishlistButton(
-                        isInWishlist: currentWishlistItem != null,
-                        isLoading: false,
-                        onPressed: () async {
-                          try {
-                            final actions = ref.read(favoriteActionsProvider);
-                            if (currentWishlistItem != null) {
-                              await actions.removeWishlist(currentWishlistItem);
-                            } else {
-                              await actions.createWishlistItem(
-                                title: details.album.title,
-                                itemType: itemType,
-                                artistId: details.artist.id,
-                                artistName: details.artist.name,
-                                formatEdition: details.album.formatEdition,
-                              );
-                            }
-
-                            if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  currentWishlistItem != null
-                                      ? 'Removido da wishlist'
-                                      : 'Adicionado à wishlist',
-                                ),
-                              ),
-                            );
-                          } catch (e) {
-                            if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Erro na wishlist: $e'),
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                  if (details.currentUserIsAdmin) ...[
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          final typeSegment =
-                              itemType == ItemType.cd ? 'cd' : 'vinyl';
-                          context.push('/admin/items/$typeSegment/$albumId/edit');
-                        },
-                        icon: const Icon(Icons.edit_outlined),
-                        label: const Text('Editar item'),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  AlbumMetaSection(details: details),
                   const SizedBox(height: 12),
                   _LoanSection(
                     itemType: resolvedItemType,
@@ -288,6 +197,108 @@ class AlbumDetailsPage extends ConsumerWidget {
                       }
                     },
                   ),
+                  const SizedBox(height: 12),
+                  AppSectionCard(
+                    title: 'Ações secundárias',
+                    subtitle: 'Favoritos, wishlist e gestão (admin)',
+                    child: Column(
+                      children: [
+                        Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            FavoriteButton(
+                              isFavorite: isFavorite,
+                              isLoading: favoriteActionState.isLoading,
+                              onPressed: () async {
+                                try {
+                                  await ref
+                                      .read(
+                                        favoriteItemToggleControllerProvider(favoriteKey).notifier,
+                                      )
+                                      .toggle(isFavorite: isFavorite);
+
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        isFavorite
+                                            ? 'Removido dos favoritos'
+                                            : 'Adicionado aos favoritos',
+                                      ),
+                                    ),
+                                  );
+                                } catch (e) {
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Erro ao atualizar favorito: $e'),
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                            WishlistButton(
+                              isInWishlist: currentWishlistItem != null,
+                              isLoading: false,
+                              onPressed: () async {
+                                try {
+                                  final actions = ref.read(favoriteActionsProvider);
+                                  if (currentWishlistItem != null) {
+                                    await actions.removeWishlist(currentWishlistItem);
+                                  } else {
+                                    await actions.createWishlistItem(
+                                      title: details.album.title,
+                                      itemType: resolvedItemType,
+                                      artistId: details.artist.id,
+                                      artistName: details.artist.name,
+                                      formatEdition: details.album.formatEdition,
+                                    );
+                                  }
+
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        currentWishlistItem != null
+                                            ? 'Removido da wishlist'
+                                            : 'Adicionado à wishlist',
+                                      ),
+                                    ),
+                                  );
+                                } catch (e) {
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Erro na wishlist: $e'),
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                        if (details.currentUserIsAdmin) ...[
+                          const SizedBox(height: 10),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                final typeSegment =
+                                    itemType == ItemType.cd ? 'cd' : 'vinyl';
+                                context.push('/admin/items/$typeSegment/$albumId/edit');
+                              },
+                              icon: const Icon(Icons.edit_outlined),
+                              label: const Text('Editar item'),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  AlbumMetaSection(details: details),
+                  const SizedBox(height: 12),
                   ItemCollectionsWidget(
                     itemId: albumId,
                     itemType: resolvedItemType,
@@ -391,18 +402,12 @@ class _LoanSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final itemTypeLabel = itemType == ItemType.cd ? 'CD' : 'Vinil';
 
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Estado de requisição',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 10),
+    return AppSectionCard(
+      title: 'Ação principal',
+      subtitle: 'Requisitar ou devolver este $itemTypeLabel',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
             if (onShelf) ...[
               Text(
                 'Este $itemTypeLabel está na prateleira.',
@@ -471,7 +476,6 @@ class _LoanSection extends StatelessWidget {
                 ),
             ],
           ],
-        ),
       ),
     );
   }
@@ -482,6 +486,54 @@ class _LoanSection extends StatelessWidget {
 
     return '${twoDigits(local.day)}/${twoDigits(local.month)}/${local.year} '
         '${twoDigits(local.hour)}:${twoDigits(local.minute)}';
+  }
+}
+
+class _AlbumDetailsSkeleton extends StatelessWidget {
+  const _AlbumDetailsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return LoadingSkeleton(
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SkeletonBox(width: 156, height: 156, radius: 16),
+                      SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SkeletonBox(width: 180, height: 20),
+                            SizedBox(height: 14),
+                            SkeletonBox(width: 140, height: 14),
+                            SizedBox(height: 10),
+                            SkeletonBox(width: 120, height: 14),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const AlbumTileSkeleton(),
+          const AlbumTileSkeleton(),
+          const AlbumTileSkeleton(),
+        ],
+      ),
+    );
   }
 }
 

@@ -20,28 +20,36 @@ class AppEmptyState extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Container(
-          padding: const EdgeInsets.all(20),
+          constraints: const BoxConstraints(maxWidth: 420),
+          padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
-            color: colors.surfaceContainerLow,
+            color: colors.surfaceContainer,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: colors.outlineVariant.withValues(alpha: 0.5)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.14),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   color: colors.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(18),
                 ),
                 child: Icon(
                   icon ?? Icons.inbox_outlined,
-                  size: 32,
+                  size: 34,
                   color: colors.primary,
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
               Text(
                 title,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -50,11 +58,12 @@ class AppEmptyState extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               if (subtitle != null) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 Text(
                   subtitle!,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: colors.onSurfaceVariant,
+                        height: 1.35,
                       ),
                   textAlign: TextAlign.center,
                 ),

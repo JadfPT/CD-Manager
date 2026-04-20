@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_error_state.dart';
+import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../../../shared/models/item_type.dart';
 import '../../../../shared/models/wishlist_item.dart';
 import '../../../../shared/models/artist.dart';
@@ -27,12 +28,26 @@ class FavoritesPage extends ConsumerWidget {
               icon: const Icon(Icons.casino_outlined),
             ),
           ],
-          bottom: const TabBar(
-            tabs: [
-              Tab(icon: Icon(Icons.favorite), text: 'Itens'),
-              Tab(icon: Icon(Icons.star), text: 'Artistas'),
-              Tab(icon: Icon(Icons.push_pin), text: 'Wishlist'),
-            ],
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(58),
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Theme.of(context)
+                    .colorScheme
+                    .surfaceContainerHighest
+                    .withValues(alpha: 0.45),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const TabBar(
+                tabs: [
+                  Tab(icon: Icon(Icons.favorite), text: 'Itens'),
+                  Tab(icon: Icon(Icons.star), text: 'Artistas'),
+                  Tab(icon: Icon(Icons.push_pin), text: 'Wishlist'),
+                ],
+              ),
+            ),
           ),
         ),
         body: const TabBarView(
@@ -60,7 +75,7 @@ class _FavoriteItemsTab extends ConsumerWidget {
         await ref.read(favoriteItemsProvider.future);
       },
       child: favoriteItemsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const _AlwaysScrollable(child: _LoadingListBlock()),
         error: (error, _) => _AlwaysScrollable(
           child: AppErrorState(
             message: error.toString(),
@@ -134,7 +149,7 @@ class _FavoriteArtistsTab extends ConsumerWidget {
         await ref.read(favoriteArtistsProvider.future);
       },
       child: favoriteArtistsAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const _AlwaysScrollable(child: _LoadingListBlock()),
         error: (error, _) => _AlwaysScrollable(
           child: AppErrorState(
             message: error.toString(),
@@ -158,40 +173,43 @@ class _FavoriteArtistsTab extends ConsumerWidget {
             itemCount: artists.length,
             itemBuilder: (context, index) {
               final artist = artists[index];
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundImage: artist.imageUrl == null || artist.imageUrl!.trim().isEmpty
-                      ? null
-                      : NetworkImage(artist.imageUrl!.trim()),
-                  child: artist.imageUrl == null || artist.imageUrl!.trim().isEmpty
-                      ? Text(artist.name.isNotEmpty ? artist.name[0].toUpperCase() : '?')
-                      : null,
+              return Card(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundImage: artist.imageUrl == null || artist.imageUrl!.trim().isEmpty
+                        ? null
+                        : NetworkImage(artist.imageUrl!.trim()),
+                    child: artist.imageUrl == null || artist.imageUrl!.trim().isEmpty
+                        ? Text(artist.name.isNotEmpty ? artist.name[0].toUpperCase() : '?')
+                        : null,
+                  ),
+                  title: Text(artist.name),
+                  subtitle: Text(
+                    artist.genreText == null || artist.genreText!.trim().isEmpty
+                        ? 'Sem género'
+                        : artist.genreText!,
+                  ),
+                  trailing: IconButton(
+                    tooltip: 'Remover artista favorito',
+                    icon: const Icon(Icons.star, color: Colors.amber),
+                    onPressed: () async {
+                      try {
+                        await ref.read(favoriteActionsProvider).removeArtist(artist.id);
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Artista removido dos favoritos')),
+                        );
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Erro ao remover artista favorito: $e')),
+                        );
+                      }
+                    },
+                  ),
+                  onTap: () => context.push('/artists/${artist.id}'),
                 ),
-                title: Text(artist.name),
-                subtitle: Text(
-                  artist.genreText == null || artist.genreText!.trim().isEmpty
-                      ? 'Sem género'
-                      : artist.genreText!,
-                ),
-                trailing: IconButton(
-                  tooltip: 'Remover artista favorito',
-                  icon: const Icon(Icons.star, color: Colors.amber),
-                  onPressed: () async {
-                    try {
-                      await ref.read(favoriteActionsProvider).removeArtist(artist.id);
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Artista removido dos favoritos')),
-                      );
-                    } catch (e) {
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Erro ao remover artista favorito: $e')),
-                      );
-                    }
-                  },
-                ),
-                onTap: () => context.push('/artists/${artist.id}'),
               );
             },
           );
@@ -215,7 +233,7 @@ class _WishlistTab extends ConsumerWidget {
         await ref.read(wishlistProvider.future);
       },
       child: wishlistAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const _AlwaysScrollable(child: _LoadingListBlock()),
         error: (error, _) => _AlwaysScrollable(
           child: AppErrorState(
             message: error.toString(),
@@ -691,6 +709,25 @@ class _AlwaysScrollable extends StatelessWidget {
           child: child,
         ),
       ],
+    );
+  }
+}
+
+class _LoadingListBlock extends StatelessWidget {
+  const _LoadingListBlock();
+
+  @override
+  Widget build(BuildContext context) {
+    return LoadingSkeleton(
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          SizedBox(height: 8),
+          AlbumTileSkeleton(),
+          AlbumTileSkeleton(),
+          AlbumTileSkeleton(),
+        ],
+      ),
     );
   }
 }

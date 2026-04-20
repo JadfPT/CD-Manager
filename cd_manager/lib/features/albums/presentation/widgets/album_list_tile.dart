@@ -21,73 +21,43 @@ class AlbumListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final typeLabel = item.itemType == ItemType.cd ? 'CD' : 'VINIL';
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       clipBehavior: Clip.antiAlias,
+      elevation: 1.5,
       child: InkWell(
         onTap: onTap,
+        overlayColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.pressed)) {
+            return colors.primary.withValues(alpha: 0.08);
+          }
+          if (states.contains(WidgetState.hovered)) {
+            return colors.primary.withValues(alpha: 0.04);
+          }
+          return null;
+        }),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(14),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      AlbumCover(
-                        coverUrl: item.coverUrl,
-                        title: item.title,
-                        size: 72,
-                      ),
-                      Positioned(
-                        right: -6,
-                        bottom: -6,
-                        child: Material(
-                          color: Colors.transparent,
-                          shape: const CircleBorder(),
-                          child: InkWell(
-                            customBorder: const CircleBorder(),
-                            onTap: onArtistTap,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(color: colors.surface, width: 2),
-                              ),
-                              child: CircleAvatar(
-                                radius: 12,
-                                backgroundImage: item.artistImageUrl == null ||
-                                        item.artistImageUrl!.trim().isEmpty
-                                    ? null
-                                    : NetworkImage(item.artistImageUrl!.trim()),
-                                child: item.artistImageUrl == null ||
-                                        item.artistImageUrl!.trim().isEmpty
-                                    ? Text(
-                                        item.artistName.isNotEmpty
-                                            ? item.artistName[0].toUpperCase()
-                                            : '?',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelSmall
-                                            ?.copyWith(fontWeight: FontWeight.w700),
-                                      )
-                                    : null,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                  AlbumCover(
+                    coverUrl: item.coverUrl,
+                    title: item.title,
+                    size: 78,
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   Text(
-                    'ID: ${item.albumId}',
+                    '$typeLabel #${item.albumId}',
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: colors.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.2,
                         ),
                   ),
                 ],
@@ -100,32 +70,63 @@ class AlbumListTile extends StatelessWidget {
                     Text(
                       item.title,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w800,
                           ),
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      item.artistName,
-                      style: Theme.of(context).textTheme.bodyMedium,
+                    const SizedBox(height: 5),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(999),
+                      onTap: onArtistTap,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircleAvatar(
+                            radius: 11,
+                            backgroundImage: item.artistImageUrl == null ||
+                                    item.artistImageUrl!.trim().isEmpty
+                                ? null
+                                : NetworkImage(item.artistImageUrl!.trim()),
+                            child: item.artistImageUrl == null ||
+                                    item.artistImageUrl!.trim().isEmpty
+                                ? Text(
+                                    item.artistName.isNotEmpty
+                                        ? item.artistName[0].toUpperCase()
+                                        : '?',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(fontWeight: FontWeight.w700),
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            item.artistName,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                        ],
+                      ),
                     ),
                     if (item.artistGenreText != null &&
                         item.artistGenreText!.trim().isNotEmpty) ...[
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 5),
                       Text(
                         item.artistGenreText!,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: colors.onSurfaceVariant,
+                              color: colors.onSurfaceVariant.withValues(alpha: 0.88),
                             ),
                       ),
                     ],
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     Wrap(
                       spacing: 8,
                       runSpacing: 6,
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         _InfoBadge(
-                          label: item.itemType == ItemType.cd ? 'CD' : 'VINIL',
+                          label: typeLabel,
                           foregroundColor:
                               item.itemType == ItemType.cd ? Colors.blue.shade100 : Colors.purple.shade100,
                           backgroundColor:
@@ -141,7 +142,7 @@ class AlbumListTile extends StatelessWidget {
               trailing ??
                   Icon(
                     Icons.chevron_right,
-                    color: colors.onSurfaceVariant,
+                    color: colors.onSurfaceVariant.withValues(alpha: 0.85),
                   ),
             ],
           ),

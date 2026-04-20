@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 class AppTheme {
   static const _seedColor = Color(0xFF1DB854);
-  static const _surfaceDark = Color(0xFF111318);
-  static const _surfaceDarkAlt = Color(0xFF171A21);
+  static const _surfaceDark = Color(0xFF0D1118);
+  static const _surfaceDarkAlt = Color(0xFF141B24);
+  static const _surfaceDarkElevated = Color(0xFF1A2430);
 
   static final lightTheme = ThemeData(
     useMaterial3: true,
@@ -18,7 +19,7 @@ class AppTheme {
       backgroundColor: ColorScheme.fromSeed(
         seedColor: _seedColor,
         brightness: Brightness.light,
-      ).surface,
+      ).surfaceContainer,
       foregroundColor: const Color(0xFF101214),
     ),
     cardTheme: CardThemeData(
@@ -74,6 +75,11 @@ class AppTheme {
       actionTextColor: _seedColor,
       behavior: SnackBarBehavior.floating,
     ),
+    tabBarTheme: const TabBarThemeData(
+      dividerColor: Colors.transparent,
+      labelStyle: TextStyle(fontWeight: FontWeight.w700),
+      unselectedLabelStyle: TextStyle(fontWeight: FontWeight.w600),
+    ),
   );
 
   static final darkTheme = ThemeData(
@@ -86,16 +92,14 @@ class AppTheme {
     appBarTheme: AppBarTheme(
       centerTitle: false,
       elevation: 0,
-      backgroundColor: ColorScheme.fromSeed(
-        seedColor: _seedColor,
-        brightness: Brightness.dark,
-      ).surface,
+      backgroundColor: _surfaceDarkAlt,
       foregroundColor: Colors.white,
     ),
     cardTheme: CardThemeData(
       color: _surfaceDarkAlt,
       surfaceTintColor: Colors.transparent,
-      elevation: 0,
+      shadowColor: Colors.black.withValues(alpha: 0.24),
+      elevation: 1,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     ),
@@ -104,7 +108,7 @@ class AppTheme {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: _surfaceDarkAlt,
+      fillColor: _surfaceDarkElevated,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide.none,
@@ -120,6 +124,7 @@ class AppTheme {
           width: 2,
         ),
       ),
+      hintStyle: const TextStyle(color: Color(0xFF8E9AA9)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
@@ -145,6 +150,22 @@ class AppTheme {
       contentTextStyle: const TextStyle(color: Colors.white),
       actionTextColor: _seedColor,
       behavior: SnackBarBehavior.floating,
+    ),
+    tabBarTheme: TabBarThemeData(
+      dividerColor: Colors.transparent,
+      indicator: BoxDecoration(
+        color: _seedColor.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      indicatorSize: TabBarIndicatorSize.tab,
+      labelStyle: const TextStyle(fontWeight: FontWeight.w700),
+      unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
+      labelColor: Colors.white,
+      unselectedLabelColor: const Color(0xFFAAB5C2),
+    ),
+    dividerTheme: DividerThemeData(
+      color: Colors.white.withValues(alpha: 0.08),
+      thickness: 1,
     ),
   );
 }

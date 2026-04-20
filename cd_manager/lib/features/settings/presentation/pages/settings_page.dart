@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../shared/widgets/app_error_state.dart';
+import '../../../../shared/widgets/app_section_card.dart';
+import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../application/settings_providers.dart';
 
 class SettingsPage extends ConsumerWidget {
@@ -12,22 +15,37 @@ class SettingsPage extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Definições')),
       body: themeModeAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
+        loading: () => const LoadingSkeleton(
           child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text('Erro ao carregar definições: $error'),
+            padding: EdgeInsets.all(16),
+            child: Card(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SkeletonBox(width: 160, height: 16),
+                    SizedBox(height: 8),
+                    SkeletonBox(width: 220, height: 12),
+                    SizedBox(height: 14),
+                    SkeletonBox(height: 48, radius: 14),
+                  ],
+                ),
+              ),
+            ),
           ),
+        ),
+        error: (error, _) => AppErrorState(
+          message: 'Erro ao carregar definições: $error',
+          onRetry: () => ref.invalidate(themeModeControllerProvider),
         ),
         data: (themeMode) {
           return ListView(
+            padding: const EdgeInsets.all(16),
             children: [
-              const ListTile(
-                title: Text('Aparência'),
-                subtitle: Text('Escolhe como o tema é aplicado na aplicação.'),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+              AppSectionCard(
+                title: 'Aparência',
+                subtitle: 'Escolhe como o tema é aplicado na aplicação.',
                 child: SegmentedButton<ThemeMode>(
                   segments: const [
                     ButtonSegment<ThemeMode>(

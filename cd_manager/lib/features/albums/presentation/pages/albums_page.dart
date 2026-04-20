@@ -5,6 +5,7 @@ import '../../../../shared/models/item_type.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_error_state.dart';
 import '../../../../shared/widgets/app_search_field.dart';
+import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../../profile/application/profile_providers.dart';
 import '../../application/album_view_providers.dart';
 import '../widgets/album_list_tile.dart';
@@ -150,7 +151,18 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
                 await ref.read(visibleAlbumsProvider.future);
               },
               child: albumsAsync.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
+                loading: () => LoadingSkeleton(
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: const [
+                      SizedBox(height: 8),
+                      AlbumTileSkeleton(),
+                      AlbumTileSkeleton(),
+                      AlbumTileSkeleton(),
+                      AlbumTileSkeleton(),
+                    ],
+                  ),
+                ),
                 error: (error, stackTrace) => ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   children: [

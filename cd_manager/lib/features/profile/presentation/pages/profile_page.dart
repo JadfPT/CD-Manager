@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../../shared/widgets/app_section_card.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/models/album_list_item.dart';
 import '../../../../shared/widgets/app_error_state.dart';
+import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../../auth/application/auth_providers.dart';
 import '../../../../shared/models/item_type.dart';
 import '../../application/profile_providers.dart';
@@ -57,7 +59,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         ],
       ),
       body: profileAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const _ProfilePageSkeleton(),
         error: (error, stackTrace) => AppErrorState(
           message: error.toString(),
           onRetry: () => ref.invalidate(currentProfileProvider),
@@ -78,12 +80,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Card(
-                margin: EdgeInsets.zero,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
+              AppSectionCard(
+                title: 'Identidade',
+                subtitle: 'Dados públicos da tua conta',
+                child: Column(
+                  children: [
                       _AvatarPreview(avatarUrl: avatarSource),
                       const SizedBox(height: 8),
                       OutlinedButton.icon(
@@ -175,24 +176,17 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       const SizedBox(height: 10),
                       _AdminBadge(isAdmin: profile?.isAdmin ?? false),
                     ],
-                  ),
                 ),
               ),
               const SizedBox(height: 12),
-              Card(
-                margin: EdgeInsets.zero,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Editar perfil',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: 12),
+              AppSectionCard(
+                title: 'Editar perfil',
+                subtitle: 'Username, nome de apresentação e avatar',
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                         TextFormField(
                           controller: _usernameController,
                           decoration: const InputDecoration(
@@ -231,78 +225,94 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             return null;
                           },
                         ),
-                        const SizedBox(height: 14),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton.icon(
-                            onPressed: updateState.isLoading
-                                ? null
-                                : () async {
-                                    if (!_formKey.currentState!.validate()) {
-                                      return;
-                                    }
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          onPressed: updateState.isLoading
+                              ? null
+                              : () async {
+                                  if (!_formKey.currentState!.validate()) {
+                                    return;
+                                  }
 
-                                    try {
-                                      await ref
-                                          .read(
-                                            profileUpdateControllerProvider
-                                                .notifier,
-                                          )
-                                          .save(
-                                            username: _usernameController.text
-                                                .trim(),
-                                            displayName: _displayNameController
-                                                .text
-                                                .trim(),
-                                            avatarUrl: _avatarUrlController.text
-                                                .trim(),
-                                          );
+                                  try {
+                                    await ref
+                                        .read(
+                                          profileUpdateControllerProvider
+                                              .notifier,
+                                        )
+                                        .save(
+                                          username: _usernameController.text
+                                              .trim(),
+                                          displayName: _displayNameController
+                                              .text
+                                              .trim(),
+                                          avatarUrl: _avatarUrlController.text
+                                              .trim(),
+                                        );
 
-                                      if (!context.mounted) return;
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Perfil atualizado com sucesso',
-                                          ),
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(
+                                      context,
+                                    ).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Perfil atualizado com sucesso',
                                         ),
-                                      );
-                                    } catch (e) {
-                                      if (!context.mounted) return;
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Erro ao atualizar perfil: $e',
-                                          ),
+                                      ),
+                                    );
+                                  } catch (e) {
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(
+                                      context,
+                                    ).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Erro ao atualizar perfil: $e',
                                         ),
-                                      );
-                                    }
-                                  },
-                            icon: updateState.isLoading
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.save_outlined),
-                            label: const Text('Guardar alterações'),
-                          ),
+                                      ),
+                                    );
+                                  }
+                                },
+                          icon: updateState.isLoading
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.save_outlined),
+                          label: const Text('Guardar alterações'),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
               const SizedBox(height: 12),
               statsAsync.when(
-                loading: () => const SizedBox(
-                  height: 96,
-                  child: Center(child: CircularProgressIndicator()),
+                loading: () => const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: LoadingSkeleton(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SkeletonBox(width: 140, height: 16),
+                          SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(child: SkeletonBox(height: 58, radius: 14)),
+                              SizedBox(width: 8),
+                              Expanded(child: SkeletonBox(height: 58, radius: 14)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
                 error: (error, _) => AppErrorState(
                   message: error.toString(),
@@ -312,9 +322,22 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               ),
               const SizedBox(height: 12),
               recentItemsAsync.when(
-                loading: () => const SizedBox(
-                  height: 120,
-                  child: Center(child: CircularProgressIndicator()),
+                loading: () => const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: LoadingSkeleton(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SkeletonBox(width: 160, height: 16),
+                          SizedBox(height: 10),
+                          SkeletonBox(height: 58, radius: 14),
+                          SizedBox(height: 8),
+                          SkeletonBox(height: 58, radius: 14),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
                 error: (error, _) => AppErrorState(
                   message: error.toString(),
@@ -370,6 +393,53 @@ class _StatsGrid extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(child: _StatCard(label: 'Favoritos', value: stats.favoriteArtistsCount.toString(), icon: Icons.star_outline)),
       ],
+    );
+  }
+}
+
+class _ProfilePageSkeleton extends StatelessWidget {
+  const _ProfilePageSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return LoadingSkeleton(
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: const [
+          Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  SkeletonBox(width: 84, height: 84, radius: 999),
+                  SizedBox(height: 12),
+                  SkeletonBox(width: 170, height: 16),
+                  SizedBox(height: 8),
+                  SkeletonBox(width: 130, height: 12),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(height: 12),
+          Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SkeletonBox(width: 140, height: 16),
+                  SizedBox(height: 12),
+                  SkeletonBox(height: 48, radius: 14),
+                  SizedBox(height: 10),
+                  SkeletonBox(height: 48, radius: 14),
+                  SizedBox(height: 12),
+                  SkeletonBox(height: 46, radius: 14),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
