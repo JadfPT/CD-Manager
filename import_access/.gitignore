@@ -1,0 +1,4 @@
+import_config.py
+.venv/
+__pycache__/
+*.pyc
