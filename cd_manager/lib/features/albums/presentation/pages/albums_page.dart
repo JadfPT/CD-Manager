@@ -49,8 +49,10 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
             onPressed: () => context.push('/random'),
             icon: const Icon(Icons.casino_outlined),
           ),
-          if (isAdmin)
-            IconButton(
+        ],
+      ),
+      floatingActionButton: isAdmin
+          ? FloatingActionButton(
               tooltip: 'Criar item',
               onPressed: () async {
                 final selected = await showModalBottomSheet<ItemType>(
@@ -79,10 +81,9 @@ class _AlbumsPageState extends ConsumerState<AlbumsPage> {
                 final typeSegment = selected == ItemType.cd ? 'cd' : 'vinyl';
                 context.push('/admin/items/new/$typeSegment');
               },
-              icon: const Icon(Icons.add),
-            ),
-        ],
-      ),
+              child: const Icon(Icons.add),
+            )
+          : null,
       body: Column(
         children: [
           Padding(

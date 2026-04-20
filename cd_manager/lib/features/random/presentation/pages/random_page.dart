@@ -7,8 +7,6 @@ import '../../../../features/favorites/application/favorite_providers.dart';
 import '../../../../shared/models/album_list_item.dart';
 import '../../../../shared/models/artist.dart';
 import '../../../../shared/models/item_type.dart';
-import '../../../../shared/application/ui_action_executor.dart';
-import '../../../../shared/widgets/app_feedback.dart';
 import '../../../../shared/widgets/app_network_image.dart';
 import '../../application/random_controller.dart';
 import '../../application/random_models.dart';
@@ -114,25 +112,10 @@ class _RandomPageState extends ConsumerState<RandomPage> {
                       onPressed: state.isRolling || possibleCount == 0
                           ? null
                           : () async {
-                              final success = await UiActionExecutor.run(
-                                context,
-                                actionName: 'random_draw',
-                                logCategory: 'random.ui',
-                                action: () =>
-                                    ref.read(randomControllerProvider.notifier).draw(),
-                                errorMessage: 'Erro ao sortear item random.',
-                              );
-
-                              if (!success || !context.mounted) return;
-
-                              final latest = ref.read(randomControllerProvider);
-                              if (latest.statusText ==
-                                      'Sem artistas para sortear com os filtros atuais.' ||
-                                  latest.statusText ==
-                                      'Nada para sortear com os filtros atuais.' ||
-                                  latest.statusText ==
-                                      'Sem itens para sortear com os filtros atuais.') {
-                                AppFeedback.info(context, latest.statusText!);
+                              try {
+                                await ref.read(randomControllerProvider.notifier).draw();
+                              } catch (_) {
+                                // O controller já atualiza statusText com a falha.
                               }
                             },
                       icon: state.isRolling
@@ -181,13 +164,16 @@ class _RandomPageState extends ConsumerState<RandomPage> {
               duration: const Duration(milliseconds: 280),
               curve: Curves.easeOutBack,
               builder: (context, value, child) {
+                final safeOpacity = value.clamp(0.0, 1.0).toDouble();
                 return Opacity(
-                  opacity: value,
+                  opacity: safeOpacity,
                   child: Transform.scale(scale: value, child: child),
                 );
               },
               child: _SpotifyLikeAlbumResult(item: state.pickedItem!),
             ),
+          if (state.pickedArtist != null)
+            const SizedBox(height: 24),
           if (state.pickedArtist != null)
             TweenAnimationBuilder<double>(
               key: ValueKey('artist-${state.pickedArtist!.id}-${state.resultVersion}'),
@@ -195,8 +181,9 @@ class _RandomPageState extends ConsumerState<RandomPage> {
               duration: const Duration(milliseconds: 280),
               curve: Curves.easeOutBack,
               builder: (context, value, child) {
+                final safeOpacity = value.clamp(0.0, 1.0).toDouble();
                 return Opacity(
-                  opacity: value,
+                  opacity: safeOpacity,
                   child: Transform.scale(scale: value, child: child),
                 );
               },
@@ -312,6 +299,10 @@ class _SpotifyLikeArtistResult extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final genre = artist.genreText == null || artist.genreText!.trim().isEmpty
+        ? 'Sem género'
+        : artist.genreText!;
+
     return Card(
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
@@ -319,19 +310,33 @@ class _SpotifyLikeArtistResult extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 28,
+              Container(
+                width: 74,
+                height: 74,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Theme.of(context).colorScheme.primary.withValues(alpha: 0.24),
+                      Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.16),
+                    ],
+                  ),
+                ),
                 child: AppNetworkImage(
                   imageUrl: artist.imageUrl,
-                  width: 56,
-                  height: 56,
-                  borderRadius: BorderRadius.circular(999),
-                  placeholder: Container(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    alignment: Alignment.center,
+                  width: 74,
+                  height: 74,
+                  borderRadius: BorderRadius.circular(18),
+                  placeholder: Center(
                     child: Text(
                       artist.name.isNotEmpty ? artist.name[0].toUpperCase() : '?',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.w800,
+                          ),
                     ),
                   ),
                 ),
@@ -343,18 +348,57 @@ class _SpotifyLikeArtistResult extends StatelessWidget {
                   children: [
                     Text(
                       artist.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.w800,
                           ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 4),
                     Text(
-                      artist.genreText == null || artist.genreText!.trim().isEmpty
-                          ? 'Sem género'
-                          : artist.genreText!,
+                      genre,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .secondaryContainer
+                                .withValues(alpha: 0.65),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            'Artista',
+                            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest
+                                .withValues(alpha: 0.75),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            'ID: ${artist.id}',
+                            style: Theme.of(context).textTheme.labelLarge,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

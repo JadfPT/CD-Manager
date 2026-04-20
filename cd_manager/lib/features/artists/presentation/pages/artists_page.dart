@@ -26,14 +26,15 @@ class ArtistsPage extends ConsumerWidget {
             onPressed: () => context.push('/random'),
             icon: const Icon(Icons.casino_outlined),
           ),
-          if (isAdmin)
-            IconButton(
-              tooltip: 'Novo artista',
-              onPressed: () => context.push('/admin/artists/new'),
-              icon: const Icon(Icons.add),
-            ),
         ],
       ),
+      floatingActionButton: isAdmin
+          ? FloatingActionButton(
+              tooltip: 'Novo artista',
+              onPressed: () => context.push('/admin/artists/new'),
+              child: const Icon(Icons.add),
+            )
+          : null,
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(artistsProvider);
