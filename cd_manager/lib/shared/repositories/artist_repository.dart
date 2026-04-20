@@ -1,5 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import '../../core/config/supabase_config.dart';
 import '../../core/utils/error_handler.dart';
 import '../models/album_list_item.dart';
@@ -34,6 +34,7 @@ class ArtistRepository {
 
   Future<List<Artist>> listArtists() async {
     try {
+      debugPrint('[ArtistRepository] listArtists');
       final data = await _client
           .from('artists')
           .select('id, name, genre_text, image_url, created_at')
@@ -47,6 +48,7 @@ class ArtistRepository {
 
   Future<Artist?> getArtistById(int artistId) async {
     try {
+      debugPrint('[ArtistRepository] getArtistById artistId=$artistId');
       final data = await _client
           .from('artists')
           .select('id, name, genre_text, image_url, created_at')
@@ -62,6 +64,7 @@ class ArtistRepository {
 
   Future<List<AlbumListItem>> listAlbumsByArtistId(int artistId) async {
     try {
+      debugPrint('[ArtistRepository] listAlbumsByArtistId artistId=$artistId');
       // Buscar CDs
       final cdData = await _client
           .from('cd_albums')
@@ -131,11 +134,18 @@ class ArtistRepository {
   }) async {
     await _ensureCurrentUserIsAdmin();
 
+    final normalizedName = name.trim();
+    if (normalizedName.isEmpty) {
+      throw AppException(message: 'Nome do artista é obrigatório');
+    }
+
+    debugPrint('[ArtistRepository] createArtist name=$normalizedName');
+
     try {
       final data = await _client
           .from('artists')
           .insert({
-            'name': name.trim(),
+            'name': normalizedName,
             'genre_text': genreText?.trim().isEmpty == true ? null : genreText?.trim(),
             'image_url': imageUrl?.trim().isEmpty == true ? null : imageUrl?.trim(),
           })
@@ -156,11 +166,18 @@ class ArtistRepository {
   }) async {
     await _ensureCurrentUserIsAdmin();
 
+    final normalizedName = name.trim();
+    if (normalizedName.isEmpty) {
+      throw AppException(message: 'Nome do artista é obrigatório');
+    }
+
+    debugPrint('[ArtistRepository] updateArtist artistId=$artistId name=$normalizedName');
+
     try {
       final data = await _client
           .from('artists')
           .update({
-            'name': name.trim(),
+            'name': normalizedName,
             'genre_text': genreText?.trim().isEmpty == true ? null : genreText?.trim(),
             'image_url': imageUrl?.trim().isEmpty == true ? null : imageUrl?.trim(),
           })
@@ -188,6 +205,10 @@ class ArtistRepository {
   }) async {
     await _ensureCurrentUserIsAdmin();
 
+    if (fileBytes.isEmpty) {
+      throw AppException(message: 'Ficheiro de imagem vazio');
+    }
+
     final userId = _requireUserId();
     final ext = fileExtension.toLowerCase().replaceAll('.', '');
     final path = '$userId/artist_${DateTime.now().millisecondsSinceEpoch}.$ext';
@@ -200,6 +221,7 @@ class ArtistRepository {
     };
 
     try {
+      debugPrint('[ArtistRepository] uploadArtistImage user=$userId ext=$ext bytes=${fileBytes.length}');
       await _client.storage.from('artist').uploadBinary(
             path,
             fileBytes,

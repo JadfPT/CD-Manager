@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 import '../../core/config/supabase_config.dart';
 import '../../core/utils/error_handler.dart';
 import '../models/album_list_item.dart';
@@ -66,10 +67,7 @@ class FavoriteRepository {
 
   Future<List<int>> listFavoriteAlbumIdsForCurrentUser() async {
     final favorites = await listFavoritesForCurrentUser();
-    return favorites
-        .where((fav) => fav.itemType == ItemType.cd)
-        .map((fav) => fav.albumId)
-        .toList();
+    return favorites.map((fav) => fav.albumId).toList();
   }
 
   Future<List<AlbumListItem>> _listItemsForCurrentUserByTable({
@@ -198,6 +196,7 @@ class FavoriteRepository {
       final data = await _client
           .from('wishlist_items')
           .select('id, user_id, title, artist_id, artist_name, item_type, format_edition, notes, status, created_at')
+          .eq('status', 'pending')
           .order('created_at', ascending: false);
 
       final userIds = data
@@ -269,6 +268,8 @@ class FavoriteRepository {
   Future<void> addFavorite(int albumId, {ItemType itemType = ItemType.cd}) async {
     final userId = _requireUserId();
 
+    debugPrint('[FavoriteRepository] addFavorite user=$userId itemId=$albumId type=${_itemTypeToDb(itemType)}');
+
     try {
       await _client.from('user_favorite_items').insert({
         'user_id': userId,
@@ -282,6 +283,8 @@ class FavoriteRepository {
 
   Future<void> removeFavorite(int albumId, {ItemType itemType = ItemType.cd}) async {
     final userId = _requireUserId();
+
+    debugPrint('[FavoriteRepository] removeFavorite user=$userId itemId=$albumId type=${_itemTypeToDb(itemType)}');
 
     try {
       await _client
@@ -298,6 +301,8 @@ class FavoriteRepository {
   Future<void> addFavoriteArtist(int artistId) async {
     final userId = _requireUserId();
 
+    debugPrint('[FavoriteRepository] addFavoriteArtist user=$userId artistId=$artistId');
+
     try {
       await _client.from('user_favorite_artists').insert({
         'user_id': userId,
@@ -310,6 +315,8 @@ class FavoriteRepository {
 
   Future<void> removeFavoriteArtist(int artistId) async {
     final userId = _requireUserId();
+
+    debugPrint('[FavoriteRepository] removeFavoriteArtist user=$userId artistId=$artistId');
 
     try {
       await _client
@@ -342,6 +349,8 @@ class FavoriteRepository {
       throw AppException(message: 'Seleciona um artista ou indica o nome do artista');
     }
 
+    debugPrint('[FavoriteRepository] createWishlistItem user=$userId type=${_itemTypeToDb(itemType)} title=$normalizedTitle artistId=$artistId');
+
     try {
       await _client.from('wishlist_items').insert({
         'user_id': userId,
@@ -372,11 +381,37 @@ class FavoriteRepository {
     }
   }
 
+  Future<void> deleteWishlistItemAsAdmin(WishlistItem item) async {
+    await _ensureCurrentUserIsAdmin();
+
+    try {
+      await _client
+          .from('wishlist_items')
+          .delete()
+          .eq('id', item.id);
+    } catch (e) {
+      throw AppException(message: 'Falha ao rejeitar wishlist: $e');
+    }
+  }
+
   Future<void> updateWishlistStatus({
     required WishlistItem item,
     required WishlistStatus status,
   }) async {
     await _ensureCurrentUserIsAdmin();
+
+    if (status == WishlistStatus.approved) {
+      throw AppException(
+        message:
+            'Estado "aprovado" não é suportado nesta base de dados. Usa "Converter para coleção" quando o item for comprado.',
+      );
+    }
+    if (status == WishlistStatus.converted) {
+      throw AppException(
+        message:
+            'Para marcar como convertido, usa a ação de conversão (RPC) para gravar também os campos de conversão.',
+      );
+    }
 
     try {
       final updated = await _client
@@ -398,19 +433,72 @@ class FavoriteRepository {
   Future<void> convertWishlistItemToCollection({
     required WishlistItem item,
     required int artistId,
-    required ItemType itemType,
   }) async {
     await _ensureCurrentUserIsAdmin();
 
     try {
-      await _client.rpc(
-        'convert_wishlist_item_to_collection',
-        params: {
-          'wishlist_id': item.id,
-          'artist_id': artistId,
-          'item_type': _itemTypeToDb(itemType),
-        },
-      );
+      final normalizedTitle = item.title.trim();
+      if (normalizedTitle.isEmpty) {
+        throw AppException(message: 'Título da wishlist inválido');
+      }
+
+      final normalizedFormatEdition = item.formatEdition?.trim();
+      final formatEdition = normalizedFormatEdition == null || normalizedFormatEdition.isEmpty
+          ? null
+          : normalizedFormatEdition;
+
+      int convertedItemId;
+
+      if (item.itemType == ItemType.cd) {
+        final lastRow = await _client
+            .from('cd_albums')
+            .select('id')
+            .order('id', ascending: false)
+            .limit(1)
+            .maybeSingle();
+        final nextId = lastRow == null ? 1 : _asInt(lastRow['id']) + 1;
+
+        final inserted = await _client
+            .from('cd_albums')
+            .insert({
+              'id': nextId,
+              'title': normalizedTitle,
+              'artist_id': artistId,
+              'on_shelf': true,
+              'cover_url': null,
+              'format_edition': formatEdition,
+            })
+            .select('id')
+            .single();
+
+        convertedItemId = _asInt(inserted['id']);
+      } else {
+        final inserted = await _client
+            .from('vinyl_albums')
+            .insert({
+              'title': normalizedTitle,
+              'artist_id': artistId,
+              'on_shelf': true,
+              'cover_url': null,
+              'format_edition': formatEdition,
+            })
+            .select('id')
+            .single();
+
+        convertedItemId = _asInt(inserted['id']);
+      }
+
+      await _client
+          .from('wishlist_items')
+          .update({
+            'artist_id': artistId,
+            'status': 'converted',
+            'converted_at': DateTime.now().toUtc().toIso8601String(),
+            'converted_to_item_type': _itemTypeToDb(item.itemType),
+            'converted_to_item_id': convertedItemId,
+            'converted_by_user_id': _requireUserId(),
+          })
+          .eq('id', item.id);
     } catch (e) {
       if (e is AppException) rethrow;
       throw AppException(message: 'Falha ao converter wishlist para coleção: $e');

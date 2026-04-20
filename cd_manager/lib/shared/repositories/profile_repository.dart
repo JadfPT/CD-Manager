@@ -1,5 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import '../../core/config/supabase_config.dart';
 import '../../core/utils/error_handler.dart';
 import '../models/profile.dart';
@@ -20,11 +20,13 @@ class ProfileRepository {
 
   Future<Profile?> getCurrentUserProfile() async {
     final userId = _requireUserId();
+    debugPrint('[ProfileRepository] getCurrentUserProfile user=$userId');
     return getProfileById(userId);
   }
 
   Future<Profile?> getProfileById(String userId) async {
     try {
+      debugPrint('[ProfileRepository] getProfileById user=$userId');
       final data = await _client
           .from('profiles')
           .select('id, username, display_name, is_admin, avatar_url, created_at')
@@ -46,8 +48,20 @@ class ProfileRepository {
     final userId = _requireUserId();
 
     final payload = <String, dynamic>{};
-    if (username != null) payload['username'] = username.trim();
-    if (displayName != null) payload['display_name'] = displayName.trim();
+    if (username != null) {
+      final normalizedUsername = username.trim();
+      if (normalizedUsername.isEmpty) {
+        throw AppException(message: 'Username não pode estar vazio');
+      }
+      payload['username'] = normalizedUsername;
+    }
+    if (displayName != null) {
+      final normalizedDisplayName = displayName.trim();
+      if (normalizedDisplayName.isEmpty) {
+        throw AppException(message: 'Nome de apresentação não pode estar vazio');
+      }
+      payload['display_name'] = normalizedDisplayName;
+    }
     if (avatarUrl != null) payload['avatar_url'] = avatarUrl.trim();
 
     if (payload.isEmpty) {
@@ -59,6 +73,7 @@ class ProfileRepository {
     }
 
     try {
+      debugPrint('[ProfileRepository] updateCurrentUserProfile user=$userId fields=${payload.keys.join(',')}');
       final data = await _client
           .from('profiles')
           .update(payload)
@@ -76,6 +91,10 @@ class ProfileRepository {
     required Uint8List fileBytes,
     required String fileExtension,
   }) async {
+    if (fileBytes.isEmpty) {
+      throw AppException(message: 'Ficheiro de avatar vazio');
+    }
+
     final userId = _requireUserId();
     final ext = fileExtension.toLowerCase().replaceAll('.', '');
     final path = '$userId/avatar_${DateTime.now().millisecondsSinceEpoch}.$ext';
@@ -88,6 +107,7 @@ class ProfileRepository {
     };
 
     try {
+      debugPrint('[ProfileRepository] uploadAvatarForCurrentUser user=$userId ext=$ext bytes=${fileBytes.length}');
       await _client.storage.from('avatars').uploadBinary(
             path,
             fileBytes,

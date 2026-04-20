@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'loan_providers.dart';
 
@@ -16,6 +17,7 @@ class LoanActionController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncLoading();
 
     try {
+      debugPrint('[LoanActionController] borrow albumId=${_key.albumId} type=${_key.itemType.value}');
       await _ref.read(loanActionsProvider).borrowAlbum(_key.albumId, _key.itemType);
       state = const AsyncData(null);
     } catch (error, stackTrace) {
@@ -28,6 +30,7 @@ class LoanActionController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncLoading();
 
     try {
+      debugPrint('[LoanActionController] returnAlbum albumId=${_key.albumId} type=${_key.itemType.value}');
       await _ref.read(loanActionsProvider).returnAlbum(_key.albumId, _key.itemType);
       state = const AsyncData(null);
     } catch (error, stackTrace) {

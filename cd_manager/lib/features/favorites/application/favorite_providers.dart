@@ -145,6 +145,13 @@ class FavoriteActions {
     _ref.invalidate(adminWishlistProvider);
   }
 
+  Future<void> deleteWishlistItemAsAdmin(WishlistItem item) async {
+    final repository = _ref.read(favoriteRepositoryProvider);
+    await repository.deleteWishlistItemAsAdmin(item);
+    _ref.invalidate(wishlistProvider);
+    _ref.invalidate(adminWishlistProvider);
+  }
+
   Future<void> updateWishlistStatus({
     required WishlistItem item,
     required WishlistStatus status,
@@ -158,13 +165,11 @@ class FavoriteActions {
   Future<void> convertWishlistToCollection({
     required WishlistItem item,
     required int artistId,
-    required ItemType itemType,
   }) async {
     final repository = _ref.read(favoriteRepositoryProvider);
     await repository.convertWishlistItemToCollection(
       item: item,
       artistId: artistId,
-      itemType: itemType,
     );
     _ref.invalidate(wishlistProvider);
     _ref.invalidate(adminWishlistProvider);

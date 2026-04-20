@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'favorite_providers.dart';
 
@@ -17,6 +18,7 @@ class FavoriteToggleController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncLoading();
 
     try {
+      debugPrint('[FavoriteToggleController] toggle albumId=$_albumId isFavorite=$isFavorite');
       final actions = _ref.read(favoriteActionsProvider);
       if (isFavorite) {
         await actions.remove(_albumId);
@@ -47,6 +49,7 @@ class FavoriteItemToggleController extends StateNotifier<AsyncValue<void>> {
     state = const AsyncLoading();
 
     try {
+      debugPrint('[FavoriteItemToggleController] toggle itemId=${_key.itemId} type=${_key.itemType.value} isFavorite=$isFavorite');
       final actions = _ref.read(favoriteActionsProvider);
       if (isFavorite) {
         await actions.remove(_key.itemId, itemType: _key.itemType);

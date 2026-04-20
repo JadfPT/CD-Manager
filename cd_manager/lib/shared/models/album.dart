@@ -8,6 +8,7 @@ class Album {
     required this.onShelf,
     required this.coverUrl,
     required this.createdAt,
+    required this.itemType,
     this.formatEdition,
   });
 
@@ -18,11 +19,12 @@ class Album {
   final String? coverUrl;
   final DateTime? createdAt;
   final String? formatEdition;
+  final ItemType itemType;
 
-  // Implicitly CD type since cd_albums only contains CDs
-  ItemType get itemType => ItemType.cd;
-
-  factory Album.fromMap(Map<String, dynamic> map) {
+  factory Album.fromMap(
+    Map<String, dynamic> map, {
+    ItemType itemType = ItemType.cd,
+  }) {
     return Album(
       id: _asInt(map['id']),
       title: map['title'] as String,
@@ -31,6 +33,7 @@ class Album {
       coverUrl: map['cover_url'] as String?,
       createdAt: _asDateTime(map['created_at']),
       formatEdition: map['format_edition'] as String?,
+      itemType: itemType,
     );
   }
 

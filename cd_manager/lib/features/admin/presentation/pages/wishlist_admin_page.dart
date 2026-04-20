@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../features/artists/application/artist_providers.dart';
+import '../../../../features/albums/application/album_providers.dart';
 import '../../../../features/albums/application/album_view_providers.dart';
 import '../../../../features/favorites/application/favorite_providers.dart';
 import '../../../../features/profile/application/profile_providers.dart';
@@ -63,26 +64,12 @@ class _WishlistAdminPageState extends ConsumerState<WishlistAdminPage> {
                       final item = items[index];
                       return _AdminWishlistCard(
                         item: item,
-                        isApproving: _loadingKeys.contains('approve-${item.id}'),
                         isRejecting: _loadingKeys.contains('reject-${item.id}'),
                         isConverting: _loadingKeys.contains('convert-${item.id}'),
-                        onApprove: () => _runAction(
-                          key: 'approve-${item.id}',
-                          action: () async {
-                            await ref.read(favoriteActionsProvider).updateWishlistStatus(
-                                  item: item,
-                                  status: WishlistStatus.approved,
-                                );
-                          },
-                          successMessage: 'Pedido aprovado',
-                        ),
                         onReject: () => _runAction(
                           key: 'reject-${item.id}',
                           action: () async {
-                            await ref.read(favoriteActionsProvider).updateWishlistStatus(
-                                  item: item,
-                                  status: WishlistStatus.rejected,
-                                );
+                            await ref.read(favoriteActionsProvider).deleteWishlistItemAsAdmin(item);
                           },
                           successMessage: 'Pedido rejeitado',
                         ),
@@ -99,9 +86,8 @@ class _WishlistAdminPageState extends ConsumerState<WishlistAdminPage> {
                             action: () async {
                               await ref.read(favoriteActionsProvider).convertWishlistToCollection(
                                 item: item,
-                                    artistId: artistId,
-                                    itemType: item.itemType,
-                                  );
+                                artistId: artistId,
+                              );
                             },
                             successMessage: 'Item convertido para coleção',
                           );
@@ -130,6 +116,8 @@ class _WishlistAdminPageState extends ConsumerState<WishlistAdminPage> {
       await action();
       ref.invalidate(adminWishlistProvider);
       ref.invalidate(wishlistProvider);
+      ref.invalidate(albumListItemsProvider);
+      ref.invalidate(albumsProvider);
       ref.invalidate(visibleAlbumsProvider);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -169,81 +157,112 @@ class _WishlistAdminPageState extends ConsumerState<WishlistAdminPage> {
       }
     }
 
-    int? selectedArtistId;
-
-    return showDialog<int>(
+    return _showArtistPicker(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Escolher artista para conversão'),
-          content: StatefulBuilder(
-            builder: (context, setState) {
-              return Column(
+      artists: artists,
+      fallbackName: fallbackName,
+    );
+  }
+
+  Future<int?> _showArtistPicker({
+    required BuildContext context,
+    required List<Artist> artists,
+    String? fallbackName,
+  }) async {
+    final queryController = TextEditingController();
+    var query = '';
+
+    final selectedArtistId = await showModalBottomSheet<int>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final filteredArtists = artists.where((artist) {
+              if (query.trim().isEmpty) return true;
+              return artist.name.toLowerCase().contains(query.toLowerCase());
+            }).toList();
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 8,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+              ),
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  TextField(
+                    controller: queryController,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.search),
+                      hintText: 'Pesquisar artista...',
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (value) {
+                      setSheetState(() {
+                        query = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 12),
                   if (fallbackName != null && fallbackName.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Text('Pedido com artista livre: $fallbackName'),
                     ),
-                  DropdownButtonFormField<int>(
-                    initialValue: selectedArtistId,
-                    decoration: const InputDecoration(
-                      labelText: 'Artista',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: artists
-                        .map(
-                          (artist) => DropdownMenuItem<int>(
-                            value: artist.id,
-                            child: Text(artist.name),
+                  Flexible(
+                    child: filteredArtists.isEmpty
+                        ? const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Text('Sem artistas para esta pesquisa'),
+                            ),
+                          )
+                        : ListView.separated(
+                            shrinkWrap: true,
+                            itemCount: filteredArtists.length,
+                            separatorBuilder: (context, index) => const Divider(height: 1),
+                            itemBuilder: (context, index) {
+                              final artist = filteredArtists[index];
+                              return ListTile(
+                                title: Text(artist.name),
+                                subtitle: artist.genreText == null ||
+                                        artist.genreText!.trim().isEmpty
+                                    ? null
+                                    : Text(artist.genreText!),
+                                onTap: () => Navigator.of(sheetContext).pop(artist.id),
+                              );
+                            },
                           ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        selectedArtistId = value;
-                      });
-                    },
                   ),
                 ],
-              );
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: selectedArtistId == null
-                  ? null
-                  : () => Navigator.of(context).pop(selectedArtistId),
-              child: const Text('Converter'),
-            ),
-          ],
+              ),
+            );
+          },
         );
       },
     );
+
+    queryController.dispose();
+    return selectedArtistId;
   }
 }
 
 class _AdminWishlistCard extends StatelessWidget {
   const _AdminWishlistCard({
     required this.item,
-    required this.isApproving,
     required this.isRejecting,
     required this.isConverting,
-    required this.onApprove,
     required this.onReject,
     required this.onConvert,
   });
 
   final WishlistItem item;
-  final bool isApproving;
   final bool isRejecting;
   final bool isConverting;
-  final Future<void> Function() onApprove;
   final Future<void> Function() onReject;
   final Future<void> Function() onConvert;
 
@@ -299,19 +318,7 @@ class _AdminWishlistCard extends StatelessWidget {
               runSpacing: 8,
               children: [
                 OutlinedButton(
-                  onPressed: isApproving || isRejecting || isConverting
-                      ? null
-                      : () async => onApprove(),
-                  child: isApproving
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Aprovar'),
-                ),
-                OutlinedButton(
-                  onPressed: isApproving || isRejecting || isConverting
+                  onPressed: isRejecting || isConverting
                       ? null
                       : () async => onReject(),
                   child: isRejecting
@@ -323,7 +330,7 @@ class _AdminWishlistCard extends StatelessWidget {
                       : const Text('Rejeitar'),
                 ),
                 FilledButton.tonal(
-                  onPressed: isApproving || isRejecting || isConverting
+                  onPressed: isRejecting || isConverting
                       ? null
                       : () async => onConvert(),
                   child: isConverting
@@ -332,7 +339,7 @@ class _AdminWishlistCard extends StatelessWidget {
                           height: 14,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text('Adicionar à coleção'),
+                      : const Text('Converter para coleção'),
                 ),
               ],
             ),

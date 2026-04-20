@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 import '../../core/config/supabase_config.dart';
 import '../../core/utils/error_handler.dart';
 import '../models/active_loan_details.dart';
@@ -18,6 +19,7 @@ class LoanRepository {
 
   Future<List<AlbumLoan>> listActiveLoans() async {
     try {
+      debugPrint('[LoanRepository] listActiveLoans');
       final data = await _client
           .from('item_loans')
           .select('id, item_id, borrowed_by_user_id, borrowed_at, returned_at, item_type')
@@ -37,6 +39,7 @@ class LoanRepository {
     final itemTypeDb = _itemTypeToDb(itemType);
 
     try {
+      debugPrint('[LoanRepository] getActiveLoanForAlbum albumId=$albumId type=$itemTypeDb');
       final data = await _client
           .from('item_loans')
           .select('id, item_id, borrowed_by_user_id, borrowed_at, returned_at, item_type')
@@ -62,6 +65,7 @@ class LoanRepository {
     if (loan == null) return null;
 
     try {
+      debugPrint('[LoanRepository] getActiveLoanDetailsForAlbum albumId=$albumId type=${_itemTypeToDb(itemType)}');
       final borrower = await _client
           .from('profiles')
           .select('id, username, display_name')
@@ -82,6 +86,7 @@ class LoanRepository {
 
   Future<List<ActiveLoanListItem>> listActiveLoanListItems() async {
     try {
+      debugPrint('[LoanRepository] listActiveLoanListItems');
       // Buscar empréstimos de CDs
       final cdRows = await _client
           .from('item_loans')
@@ -209,17 +214,27 @@ class LoanRepository {
 
   Future<List<AlbumListItem>> listOutsideShelfAlbums() async {
     try {
-      final data = await _client
+      debugPrint('[LoanRepository] listOutsideShelfAlbums');
+
+      final cdData = await _client
           .from('cd_albums')
-          .select(
-            'id, title, artist_id, on_shelf, cover_url, created_at',
-          )
+          .select('id, title, artist_id, on_shelf, cover_url, created_at')
           .eq('on_shelf', false)
           .order('id', ascending: true);
 
-      // Get all artist IDs from albums
-      final artistIds = data
-          .map((row) => _asInt(row['artist_id']))
+      final vinylData = await _client
+          .from('vinyl_albums')
+          .select('id, title, artist_id, on_shelf, cover_url, created_at')
+          .eq('on_shelf', false)
+          .order('id', ascending: true);
+
+      final allRows = [
+        ...cdData.map((row) => (row: row, itemType: ItemType.cd)),
+        ...vinylData.map((row) => (row: row, itemType: ItemType.vinyl)),
+      ];
+
+      final artistIds = allRows
+          .map((entry) => _asInt(entry.row['artist_id']))
           .toSet()
           .toList();
 
@@ -236,7 +251,8 @@ class LoanRepository {
         }
       }
 
-      return data.map((row) {
+      return allRows.map((entry) {
+        final row = entry.row;
         final artistId = _asInt(row['artist_id']);
         final artist = artistMap[artistId] ?? {};
         return AlbumListItem(
@@ -249,10 +265,11 @@ class LoanRepository {
           onShelf: row['on_shelf'] as bool,
           coverUrl: row['cover_url'] as String?,
           createdAt: _asDateTime(row['created_at']),
+          itemType: entry.itemType,
         );
       }).toList();
     } catch (e) {
-      throw AppException(message: 'Falha ao listar CDs fora da prateleira: $e');
+      throw AppException(message: 'Falha ao listar itens fora da prateleira: $e');
     }
   }
 
@@ -263,6 +280,7 @@ class LoanRepository {
     final itemTypeDb = _itemTypeToDb(itemType);
 
     try {
+      debugPrint('[LoanRepository] borrowAlbum albumId=$albumId type=$itemTypeDb');
       await _client.rpc(
         'borrow_item',
         params: {'p_item_type': itemTypeDb, 'p_item_id': albumId},
@@ -279,6 +297,7 @@ class LoanRepository {
     final itemTypeDb = _itemTypeToDb(itemType);
 
     try {
+      debugPrint('[LoanRepository] returnAlbum albumId=$albumId type=$itemTypeDb');
       await _client.rpc(
         'return_item',
         params: {'p_item_type': itemTypeDb, 'p_item_id': albumId},

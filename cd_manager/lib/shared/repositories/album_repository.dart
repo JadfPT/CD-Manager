@@ -1,5 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import '../../core/config/supabase_config.dart';
 import '../../core/utils/error_handler.dart';
 import '../models/album.dart';
@@ -41,6 +41,7 @@ class AlbumRepository {
 
   Future<List<Album>> listAlbums({bool? onShelf}) async {
     try {
+      debugPrint('[AlbumRepository] listAlbums onShelf=$onShelf');
       var query = _client
           .from('cd_albums')
           .select('id, title, artist_id, on_shelf, cover_url, created_at');
@@ -50,7 +51,7 @@ class AlbumRepository {
       }
 
       final data = await query.order('id', ascending: true);
-      return data.map((row) => Album.fromMap(row)).toList();
+      return data.map((row) => Album.fromMap(row, itemType: ItemType.cd)).toList();
     } catch (e) {
       throw AppException(message: 'Falha ao listar álbuns: $e');
     }
@@ -61,6 +62,7 @@ class AlbumRepository {
     bool? onShelf,
   }) async {
     try {
+      debugPrint('[AlbumRepository] listAlbumListItems onShelf=$onShelf');
       var query = _client.from('cd_albums').select(
             'id, title, artist_id, on_shelf, cover_url, created_at',
           );
@@ -130,12 +132,13 @@ class AlbumRepository {
     final userId = _requireUserId();
 
     try {
+      debugPrint('[AlbumRepository] getAlbumDetails albumId=$albumId preferredType=$itemType');
       final resolvedAlbum = await _fetchAlbumRow(albumId, preferredType: itemType);
       final albumRow = resolvedAlbum.albumRow;
       final resolvedItemType = resolvedAlbum.itemType;
       final itemTypeStr = resolvedItemType == ItemType.cd ? 'cd' : 'vinyl';
 
-      final album = Album.fromMap(albumRow);
+      final album = Album.fromMap(albumRow, itemType: resolvedItemType);
 
       final artistRow = await _client
           .from('artists')
@@ -232,6 +235,7 @@ class AlbumRepository {
     ItemType? itemTypeFilter,
   }) async {
     try {
+      debugPrint('[AlbumRepository] listAllItemsUnified search=$searchText onShelf=$onShelf typeFilter=$itemTypeFilter');
       final List<AlbumListItem> allItems = [];
 
       // Fetch CDs if not filtering for vinyl
@@ -366,21 +370,43 @@ class AlbumRepository {
     await _ensureCurrentUserIsAdmin();
 
     final table = _tableByType(itemType);
+    final normalizedTitle = title.trim();
+    if (normalizedTitle.isEmpty) {
+      throw AppException(message: 'Título é obrigatório');
+    }
+    if (artistId <= 0) {
+      throw AppException(message: 'Seleciona um artista válido');
+    }
+
+    debugPrint('[AlbumRepository] createItem type=${itemType.value} title=$normalizedTitle artistId=$artistId');
 
     try {
+      final values = <String, dynamic>{
+        'title': normalizedTitle,
+        'artist_id': artistId,
+        'on_shelf': true,
+        'format_edition': formatEdition?.trim().isEmpty == true ? null : formatEdition?.trim(),
+        'cover_url': coverUrl?.trim().isEmpty == true ? null : coverUrl?.trim(),
+      };
+
+      if (itemType == ItemType.cd) {
+        final lastRow = await _client
+            .from('cd_albums')
+            .select('id')
+            .order('id', ascending: false)
+            .limit(1)
+            .maybeSingle();
+        final nextId = lastRow == null ? 1 : _asInt(lastRow['id']) + 1;
+        values['id'] = nextId;
+      }
+
       final data = await _client
           .from(table)
-          .insert({
-            'title': title.trim(),
-            'artist_id': artistId,
-            'on_shelf': true,
-            'format_edition': formatEdition?.trim().isEmpty == true ? null : formatEdition?.trim(),
-            'cover_url': coverUrl?.trim().isEmpty == true ? null : coverUrl?.trim(),
-          })
+          .insert(values)
           .select('id, title, artist_id, on_shelf, cover_url, format_edition, created_at')
           .single();
 
-      return Album.fromMap(data);
+      return Album.fromMap(data, itemType: itemType);
     } catch (e) {
       throw AppException(message: 'Falha ao criar item: $e');
     }
@@ -397,12 +423,21 @@ class AlbumRepository {
     await _ensureCurrentUserIsAdmin();
 
     final table = _tableByType(itemType);
+    final normalizedTitle = title.trim();
+    if (normalizedTitle.isEmpty) {
+      throw AppException(message: 'Título é obrigatório');
+    }
+    if (artistId <= 0) {
+      throw AppException(message: 'Seleciona um artista válido');
+    }
+
+    debugPrint('[AlbumRepository] updateItem type=${itemType.value} itemId=$itemId title=$normalizedTitle artistId=$artistId');
 
     try {
       final data = await _client
           .from(table)
           .update({
-            'title': title.trim(),
+            'title': normalizedTitle,
             'artist_id': artistId,
             'format_edition': formatEdition?.trim().isEmpty == true ? null : formatEdition?.trim(),
             'cover_url': coverUrl?.trim().isEmpty == true ? null : coverUrl?.trim(),
@@ -411,7 +446,7 @@ class AlbumRepository {
           .select('id, title, artist_id, on_shelf, cover_url, format_edition, created_at')
           .single();
 
-      return Album.fromMap(data);
+      return Album.fromMap(data, itemType: itemType);
     } catch (e) {
       throw AppException(message: 'Falha ao editar item: $e');
     }
@@ -422,6 +457,10 @@ class AlbumRepository {
     required String fileExtension,
   }) async {
     await _ensureCurrentUserIsAdmin();
+
+    if (fileBytes.isEmpty) {
+      throw AppException(message: 'Ficheiro de capa vazio');
+    }
 
     final userId = _requireUserId();
     final ext = fileExtension.toLowerCase().replaceAll('.', '');
@@ -435,6 +474,7 @@ class AlbumRepository {
     };
 
     try {
+      debugPrint('[AlbumRepository] uploadCover user=$userId ext=$ext bytes=${fileBytes.length}');
       await _client.storage.from('covers').uploadBinary(
             path,
             fileBytes,

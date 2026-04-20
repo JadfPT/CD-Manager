@@ -48,26 +48,29 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/login',
-        builder: (context, state) => const LoginPage(),
+        pageBuilder: (context, state) => _fadePage(state, const LoginPage()),
       ),
       GoRoute(
         path: '/register',
-        builder: (context, state) => const RegisterPage(),
+        pageBuilder: (context, state) => _fadePage(state, const RegisterPage()),
       ),
       ShellRoute(
         builder: (context, state, child) => Shell(child: child),
         routes: [
           GoRoute(
             path: '/',
-            builder: (context, state) => const AlbumsPage(),
+            pageBuilder: (context, state) => _fadePage(state, const AlbumsPage()),
           ),
           GoRoute(
             path: '/albums/:albumId',
-            builder: (context, state) {
+            pageBuilder: (context, state) {
               final albumId = int.tryParse(state.pathParameters['albumId'] ?? '');
               if (albumId == null) {
-                return const Scaffold(
-                  body: Center(child: Text('ID de álbum inválido')),
+                return _fadePage(
+                  state,
+                  const Scaffold(
+                    body: Center(child: Text('ID de álbum inválido')),
+                  ),
                 );
               }
 
@@ -81,132 +84,156 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                           ? state.extra as ItemType
                           : ItemType.cd;
               
-              return AlbumDetailsPage(
-                albumId: albumId,
-                itemType: itemType,
+              return _fadePage(
+                state,
+                AlbumDetailsPage(
+                  albumId: albumId,
+                  itemType: itemType,
+                ),
               );
             },
           ),
           GoRoute(
             path: '/favorites',
-            builder: (context, state) => const FavoritesPage(),
+            pageBuilder: (context, state) => _fadePage(state, const FavoritesPage()),
           ),
           GoRoute(
             path: '/artists',
-            builder: (context, state) => const ArtistsPage(),
+            pageBuilder: (context, state) => _fadePage(state, const ArtistsPage()),
           ),
           GoRoute(
             path: '/artists/:artistId',
-            builder: (context, state) {
+            pageBuilder: (context, state) {
               final artistId = int.tryParse(state.pathParameters['artistId'] ?? '');
               if (artistId == null) {
-                return const Scaffold(
-                  body: Center(child: Text('ID de artista inválido')),
+                return _fadePage(
+                  state,
+                  const Scaffold(
+                    body: Center(child: Text('ID de artista inválido')),
+                  ),
                 );
               }
-              return ArtistDetailsPage(artistId: artistId);
+              return _fadePage(state, ArtistDetailsPage(artistId: artistId));
             },
           ),
           GoRoute(
             path: '/loans',
-            builder: (context, state) => const LoansPage(),
+            pageBuilder: (context, state) => _fadePage(state, const LoansPage()),
           ),
           GoRoute(
             path: '/profile',
-            builder: (context, state) => const ProfilePage(),
+            pageBuilder: (context, state) => _fadePage(state, const ProfilePage()),
           ),
           GoRoute(
             path: '/settings',
-            builder: (context, state) => const SettingsPage(),
+            pageBuilder: (context, state) => _fadePage(state, const SettingsPage()),
           ),
           GoRoute(
             path: '/random',
-            builder: (context, state) => const RandomPage(),
+            pageBuilder: (context, state) => _fadePage(state, const RandomPage()),
           ),
           GoRoute(
             path: '/admin/items/new/:itemType',
-            builder: (context, state) {
+            pageBuilder: (context, state) {
               final itemTypeRaw = state.pathParameters['itemType'] ?? 'cd';
               final itemType = itemTypeRaw == 'vinyl' ? ItemType.vinyl : ItemType.cd;
-              return AdminItemFormPage.create(itemType: itemType);
+              return _fadePage(state, AdminItemFormPage.create(itemType: itemType));
             },
           ),
           GoRoute(
             path: '/admin/artists/new',
-            builder: (context, state) => const AdminArtistFormPage.create(),
+            pageBuilder: (context, state) => _fadePage(state, const AdminArtistFormPage.create()),
           ),
           GoRoute(
             path: '/admin/artists/:artistId/edit',
-            builder: (context, state) {
+            pageBuilder: (context, state) {
               final artistId = int.tryParse(state.pathParameters['artistId'] ?? '');
               if (artistId == null) {
-                return const Scaffold(
-                  body: Center(child: Text('ID de artista inválido')),
+                return _fadePage(
+                  state,
+                  const Scaffold(
+                    body: Center(child: Text('ID de artista inválido')),
+                  ),
                 );
               }
-              return AdminArtistFormPage.edit(artistId: artistId);
+              return _fadePage(state, AdminArtistFormPage.edit(artistId: artistId));
             },
           ),
           GoRoute(
             path: '/admin/wishlist',
-            builder: (context, state) => const WishlistAdminPage(),
+            pageBuilder: (context, state) => _fadePage(state, const WishlistAdminPage()),
           ),
           GoRoute(
             path: '/collections',
-            builder: (context, state) => const CollectionsPage(),
+            pageBuilder: (context, state) => _fadePage(state, const CollectionsPage()),
           ),
           GoRoute(
             path: '/collections/new',
-            builder: (context, state) => const CollectionFormPage.create(),
+            pageBuilder: (context, state) => _fadePage(state, const CollectionFormPage.create()),
           ),
           GoRoute(
             path: '/collections/:collectionId',
-            builder: (context, state) {
+            pageBuilder: (context, state) {
               final collectionId = int.tryParse(state.pathParameters['collectionId'] ?? '');
               if (collectionId == null) {
-                return const Scaffold(
-                  body: Center(child: Text('ID de coleção inválido')),
+                return _fadePage(
+                  state,
+                  const Scaffold(
+                    body: Center(child: Text('ID de coleção inválido')),
+                  ),
                 );
               }
-              return CollectionDetailPage(collectionId: collectionId);
+              return _fadePage(state, CollectionDetailPage(collectionId: collectionId));
             },
           ),
           GoRoute(
             path: '/collections/:collectionId/edit',
-            builder: (context, state) {
+            pageBuilder: (context, state) {
               final collectionId = int.tryParse(state.pathParameters['collectionId'] ?? '');
               if (collectionId == null) {
-                return const Scaffold(
-                  body: Center(child: Text('ID de coleção inválido')),
+                return _fadePage(
+                  state,
+                  const Scaffold(
+                    body: Center(child: Text('ID de coleção inválido')),
+                  ),
                 );
               }
-              return CollectionFormPage.edit(collectionId: collectionId);
+              return _fadePage(state, CollectionFormPage.edit(collectionId: collectionId));
             },
           ),
           GoRoute(
             path: '/collections/:collectionId/add-item',
-            builder: (context, state) {
+            pageBuilder: (context, state) {
               final collectionId = int.tryParse(state.pathParameters['collectionId'] ?? '');
               if (collectionId == null) {
-                return const Scaffold(
-                  body: Center(child: Text('ID de coleção inválido')),
+                return _fadePage(
+                  state,
+                  const Scaffold(
+                    body: Center(child: Text('ID de coleção inválido')),
+                  ),
                 );
               }
-              return AddItemToCollectionPage(collectionId: collectionId);
+              return _fadePage(state, AddItemToCollectionPage(collectionId: collectionId));
             },
           ),
           GoRoute(
             path: '/admin/items/:itemType/:itemId/edit',
-            builder: (context, state) {
+            pageBuilder: (context, state) {
               final itemTypeRaw = state.pathParameters['itemType'] ?? 'cd';
               final itemType = itemTypeRaw == 'vinyl' ? ItemType.vinyl : ItemType.cd;
               final itemId = int.tryParse(state.pathParameters['itemId'] ?? '');
               if (itemId == null) {
-                return const Scaffold(
-                  body: Center(child: Text('ID de item inválido')),
+                return _fadePage(
+                  state,
+                  const Scaffold(
+                    body: Center(child: Text('ID de item inválido')),
+                  ),
                 );
               }
-              return AdminItemFormPage.edit(itemType: itemType, itemId: itemId);
+              return _fadePage(
+                state,
+                AdminItemFormPage.edit(itemType: itemType, itemId: itemId),
+              );
             },
           ),
         ],
@@ -220,3 +247,19 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     ),
   );
 });
+
+CustomTransitionPage<T> _fadePage<T>(GoRouterState state, Widget child) {
+  return CustomTransitionPage<T>(
+    key: state.pageKey,
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final fade = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      final offset = Tween<Offset>(begin: const Offset(0.02, 0.02), end: Offset.zero)
+          .animate(fade);
+      return FadeTransition(
+        opacity: fade,
+        child: SlideTransition(position: offset, child: child),
+      );
+    },
+  );
+}
