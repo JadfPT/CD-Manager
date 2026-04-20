@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_error_state.dart';
+import '../../../../shared/widgets/app_feedback.dart';
 import '../../../favorites/application/favorite_providers.dart';
 import '../../../profile/application/profile_providers.dart';
 import '../../application/artist_providers.dart';
@@ -119,19 +120,17 @@ class ArtistsPage extends ConsumerWidget {
                               await ref.read(favoriteActionsProvider).addArtist(artist.id);
                             }
                             if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  isFavoriteArtist
-                                      ? '⭐ Artista removido dos favoritos'
-                                      : '⭐ Artista adicionado aos favoritos',
-                                ),
-                              ),
+                            AppFeedback.success(
+                              context,
+                              isFavoriteArtist
+                                  ? 'Artista removido dos favoritos.'
+                                  : 'Artista adicionado aos favoritos.',
                             );
                           } catch (e) {
                             if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Erro ao atualizar artista favorito: $e')),
+                            AppFeedback.error(
+                              context,
+                              'Não foi possível atualizar artista favorito: $e',
                             );
                           }
                         },

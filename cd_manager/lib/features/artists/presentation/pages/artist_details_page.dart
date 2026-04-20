@@ -5,6 +5,7 @@ import '../../../albums/presentation/widgets/album_list_tile.dart';
 import '../../../../shared/widgets/app_section_card.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_error_state.dart';
+import '../../../../shared/widgets/app_feedback.dart';
 import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../../favorites/application/favorite_providers.dart';
 import '../../application/artist_providers.dart';
@@ -39,19 +40,17 @@ class ArtistDetailsPage extends ConsumerWidget {
                   await ref.read(favoriteActionsProvider).addArtist(artistId);
                 }
                 if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      isFavoriteArtist
-                          ? '⭐ Artista removido dos favoritos'
-                          : '⭐ Artista adicionado aos favoritos',
-                    ),
-                  ),
+                AppFeedback.success(
+                  context,
+                  isFavoriteArtist
+                      ? 'Artista removido dos favoritos.'
+                      : 'Artista adicionado aos favoritos.',
                 );
               } catch (e) {
                 if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Erro ao atualizar artista favorito: $e')),
+                AppFeedback.error(
+                  context,
+                  'Não foi possível atualizar artista favorito: $e',
                 );
               }
             },

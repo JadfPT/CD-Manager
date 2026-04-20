@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_error_state.dart';
+import '../../../../shared/widgets/app_feedback.dart';
 import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../../../shared/models/item_type.dart';
 import '../../../../shared/models/wishlist_item.dart';
@@ -116,13 +117,12 @@ class _FavoriteItemsTab extends ConsumerWidget {
                             itemType: item.itemType,
                           );
                       if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Item removido dos favoritos')),
-                      );
+                      AppFeedback.success(context, 'Item removido dos favoritos.');
                     } catch (e) {
                       if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Erro ao remover favorito: $e')),
+                      AppFeedback.error(
+                        context,
+                        'Não foi possível remover favorito: $e',
                       );
                     }
                   },
@@ -197,13 +197,15 @@ class _FavoriteArtistsTab extends ConsumerWidget {
                       try {
                         await ref.read(favoriteActionsProvider).removeArtist(artist.id);
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Artista removido dos favoritos')),
+                        AppFeedback.success(
+                          context,
+                          'Artista removido dos favoritos.',
                         );
                       } catch (e) {
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Erro ao remover artista favorito: $e')),
+                        AppFeedback.error(
+                          context,
+                          'Não foi possível remover artista favorito: $e',
                         );
                       }
                     },
@@ -270,13 +272,12 @@ class _WishlistTab extends ConsumerWidget {
                       try {
                         await ref.read(favoriteActionsProvider).removeWishlist(item);
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Item removido da wishlist')),
-                        );
+                        AppFeedback.success(context, 'Item removido da wishlist.');
                       } catch (e) {
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Erro ao remover da wishlist: $e')),
+                        AppFeedback.error(
+                          context,
+                          'Não foi possível remover item da wishlist: $e',
                         );
                       }
                     },
@@ -445,18 +446,16 @@ class _WishlistTab extends ConsumerWidget {
                                   final title = titleController.text.trim();
                                   final artistName = freeArtistController.text.trim();
                                   if (title.isEmpty) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(content: Text('Título é obrigatório')),
+                                    AppFeedback.info(
+                                      context,
+                                      'Título é obrigatório.',
                                     );
                                     return;
                                   }
                                   if (selectedArtistId == null && artistName.isEmpty) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Seleciona um artista ou indica nome livre',
-                                        ),
-                                      ),
+                                    AppFeedback.info(
+                                      context,
+                                      'Seleciona um artista ou indica nome livre.',
                                     );
                                     return;
                                   }
@@ -473,15 +472,15 @@ class _WishlistTab extends ConsumerWidget {
 
                                     if (!context.mounted) return;
                                     Navigator.of(context).pop();
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Item adicionado à wishlist'),
-                                      ),
+                                    AppFeedback.success(
+                                      context,
+                                      'Item adicionado à wishlist.',
                                     );
                                   } catch (e) {
                                     if (!context.mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(content: Text('Erro ao criar item wishlist: $e')),
+                                    AppFeedback.error(
+                                      context,
+                                      'Não foi possível criar item da wishlist: $e',
                                     );
                                   }
                                 },

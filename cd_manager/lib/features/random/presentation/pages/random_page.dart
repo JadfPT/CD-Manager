@@ -8,6 +8,7 @@ import '../../../../features/favorites/application/favorite_providers.dart';
 import '../../../../shared/models/album_list_item.dart';
 import '../../../../shared/models/artist.dart';
 import '../../../../shared/models/item_type.dart';
+import '../../../../shared/widgets/app_feedback.dart';
 
 enum RandomTypeFilter { all, cd, vinyl, artist }
 
@@ -87,23 +88,31 @@ class _RandomPageState extends ConsumerState<RandomPage> {
                     },
                   ),
                   const SizedBox(height: 8),
-                  Container(
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOut,
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .surfaceContainerHighest
-                          .withValues(alpha: 0.55),
+                      color: possibleCount == 0
+                          ? Theme.of(context).colorScheme.error.withValues(alpha: 0.12)
+                          : Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest
+                                .withValues(alpha: 0.55),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Text(
-                      possibleCount == 1
-                          ? '1 resultado possível com os filtros atuais'
-                          : '$possibleCount resultados possíveis com os filtros atuais',
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      child: Text(
+                        possibleCount == 1
+                            ? '1 resultado possível com os filtros atuais'
+                            : '$possibleCount resultados possíveis com os filtros atuais',
+                        key: ValueKey<int>(possibleCount),
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -155,14 +164,32 @@ class _RandomPageState extends ConsumerState<RandomPage> {
           if (_pickedItem != null)
             const SizedBox(height: 24),
           if (_pickedItem != null)
-            _SpotifyLikeAlbumResult(
+            TweenAnimationBuilder<double>(
               key: ValueKey('item-${_pickedItem!.albumId}-$_resultVersion'),
-              item: _pickedItem!,
+              tween: Tween(begin: 0.94, end: 1),
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeOutBack,
+              builder: (context, value, child) {
+                return Opacity(
+                  opacity: value,
+                  child: Transform.scale(scale: value, child: child),
+                );
+              },
+              child: _SpotifyLikeAlbumResult(item: _pickedItem!),
             ),
           if (_pickedArtist != null)
-            _SpotifyLikeArtistResult(
+            TweenAnimationBuilder<double>(
               key: ValueKey('artist-${_pickedArtist!.id}-$_resultVersion'),
-              artist: _pickedArtist!,
+              tween: Tween(begin: 0.94, end: 1),
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeOutBack,
+              builder: (context, value, child) {
+                return Opacity(
+                  opacity: value,
+                  child: Transform.scale(scale: value, child: child),
+                );
+              },
+              child: _SpotifyLikeArtistResult(artist: _pickedArtist!),
             ),
         ],
       ),
@@ -218,6 +245,9 @@ class _RandomPageState extends ConsumerState<RandomPage> {
             _statusText = 'Sem artistas para sortear com os filtros atuais.';
             _isRolling = false;
           });
+          if (mounted) {
+            AppFeedback.info(context, 'Sem artistas com os filtros atuais.');
+          }
           return;
         }
 
@@ -241,6 +271,9 @@ class _RandomPageState extends ConsumerState<RandomPage> {
             _statusText = 'Nada para sortear com os filtros atuais.';
             _isRolling = false;
           });
+          if (mounted) {
+            AppFeedback.info(context, 'Ajusta os filtros para fazer sorteio.');
+          }
           return;
         }
 
@@ -262,6 +295,9 @@ class _RandomPageState extends ConsumerState<RandomPage> {
           _statusText = 'Sem itens para sortear com os filtros atuais.';
           _isRolling = false;
         });
+        if (mounted) {
+          AppFeedback.info(context, 'Sem itens com os filtros atuais.');
+        }
         return;
       }
 
@@ -277,6 +313,9 @@ class _RandomPageState extends ConsumerState<RandomPage> {
         _statusText = 'Erro ao sortear: $e';
         _isRolling = false;
       });
+      if (mounted) {
+        AppFeedback.error(context, 'Erro ao sortear item random: $e');
+      }
     }
   }
 }
@@ -284,7 +323,6 @@ class _RandomPageState extends ConsumerState<RandomPage> {
 class _SpotifyLikeAlbumResult extends StatelessWidget {
   const _SpotifyLikeAlbumResult({
     required this.item,
-    super.key,
   });
 
   final AlbumListItem item;
@@ -382,7 +420,6 @@ class _SpotifyLikeAlbumResult extends StatelessWidget {
 class _SpotifyLikeArtistResult extends StatelessWidget {
   const _SpotifyLikeArtistResult({
     required this.artist,
-    super.key,
   });
 
   final Artist artist;

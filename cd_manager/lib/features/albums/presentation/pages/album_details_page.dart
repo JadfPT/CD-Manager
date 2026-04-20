@@ -9,6 +9,7 @@ import '../../../../shared/models/wishlist_item.dart';
 import '../../../../shared/widgets/app_section_card.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_error_state.dart';
+import '../../../../shared/widgets/app_feedback.dart';
 import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../../collections/presentation/widgets/item_collections_widget.dart';
 import '../../../favorites/application/favorite_providers.dart';
@@ -149,23 +150,17 @@ class AlbumDetailsPage extends ConsumerWidget {
                             .borrow();
 
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              resolvedItemType == ItemType.cd
-                                  ? 'CD marcado como fora da prateleira'
-                                  : 'Vinil marcado como fora da prateleira',
-                            ),
-                          ),
+                        AppFeedback.success(
+                          context,
+                          resolvedItemType == ItemType.cd
+                              ? 'CD requisitado com sucesso.'
+                              : 'Vinil requisitado com sucesso.',
                         );
                       } catch (e) {
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Erro ao requisitar ${resolvedItemType == ItemType.cd ? 'CD' : 'Vinil'}: $e',
-                            ),
-                          ),
+                        AppFeedback.error(
+                          context,
+                          'Não foi possível requisitar ${resolvedItemType == ItemType.cd ? 'CD' : 'Vinil'}: $e',
                         );
                       }
                     },
@@ -176,23 +171,17 @@ class AlbumDetailsPage extends ConsumerWidget {
                             .returnAlbum();
 
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              resolvedItemType == ItemType.cd
-                                  ? 'CD devolvido com sucesso'
-                                  : 'Vinil devolvido com sucesso',
-                            ),
-                          ),
+                        AppFeedback.success(
+                          context,
+                          resolvedItemType == ItemType.cd
+                              ? 'CD devolvido com sucesso.'
+                              : 'Vinil devolvido com sucesso.',
                         );
                       } catch (e) {
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Erro ao devolver ${resolvedItemType == ItemType.cd ? 'CD' : 'Vinil'}: $e',
-                            ),
-                          ),
+                        AppFeedback.error(
+                          context,
+                          'Não foi possível devolver ${resolvedItemType == ItemType.cd ? 'CD' : 'Vinil'}: $e',
                         );
                       }
                     },
@@ -219,21 +208,17 @@ class AlbumDetailsPage extends ConsumerWidget {
                                       .toggle(isFavorite: isFavorite);
 
                                   if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        isFavorite
-                                            ? 'Removido dos favoritos'
-                                            : 'Adicionado aos favoritos',
-                                      ),
-                                    ),
+                                  AppFeedback.success(
+                                    context,
+                                    isFavorite
+                                        ? 'Item removido dos favoritos.'
+                                        : 'Item adicionado aos favoritos.',
                                   );
                                 } catch (e) {
                                   if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Erro ao atualizar favorito: $e'),
-                                    ),
+                                  AppFeedback.error(
+                                    context,
+                                    'Não foi possível atualizar favorito: $e',
                                   );
                                 }
                               },
@@ -257,21 +242,17 @@ class AlbumDetailsPage extends ConsumerWidget {
                                   }
 
                                   if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        currentWishlistItem != null
-                                            ? 'Removido da wishlist'
-                                            : 'Adicionado à wishlist',
-                                      ),
-                                    ),
+                                  AppFeedback.success(
+                                    context,
+                                    currentWishlistItem != null
+                                        ? 'Item removido da wishlist.'
+                                        : 'Item adicionado à wishlist.',
                                   );
                                 } catch (e) {
                                   if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Erro na wishlist: $e'),
-                                    ),
+                                  AppFeedback.error(
+                                    context,
+                                    'Não foi possível atualizar a wishlist: $e',
                                   );
                                 }
                               },
@@ -314,16 +295,10 @@ class AlbumDetailsPage extends ConsumerWidget {
                             .save(note);
 
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Nota guardada com sucesso'),
-                          ),
-                        );
+                        AppFeedback.success(context, 'Nota guardada com sucesso.');
                       } catch (e) {
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Erro ao guardar nota: $e')),
-                        );
+                        AppFeedback.error(context, 'Não foi possível guardar a nota: $e');
                       }
                     },
                     onDelete: () async {
@@ -333,16 +308,10 @@ class AlbumDetailsPage extends ConsumerWidget {
                             .delete();
 
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Nota apagada com sucesso'),
-                          ),
-                        );
+                        AppFeedback.success(context, 'Nota apagada com sucesso.');
                       } catch (e) {
                         if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Erro ao apagar nota: $e')),
-                        );
+                        AppFeedback.error(context, 'Não foi possível apagar a nota: $e');
                       }
                     },
                   ),

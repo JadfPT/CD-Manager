@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../features/artists/application/artist_providers.dart';
 import '../../../../features/profile/application/profile_providers.dart';
 import '../../../../shared/models/artist.dart';
+import '../../../../shared/widgets/app_feedback.dart';
 
 class AdminArtistFormPage extends ConsumerStatefulWidget {
   const AdminArtistFormPage.create({super.key})
@@ -188,21 +189,15 @@ class _AdminArtistFormPageState extends ConsumerState<AdminArtistFormPage> {
                                             _imageUrlController.text = url;
                                           });
                                           if (!context.mounted) return;
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                'Imagem do artista carregada com sucesso',
-                                              ),
-                                            ),
+                                          AppFeedback.success(
+                                            context,
+                                            'Imagem do artista carregada com sucesso.',
                                           );
                                         } catch (e) {
                                           if (!context.mounted) return;
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                'Erro ao carregar imagem do artista: $e',
-                                              ),
-                                            ),
+                                          AppFeedback.error(
+                                            context,
+                                            'Não foi possível carregar imagem do artista: $e',
                                           );
                                         } finally {
                                           if (mounted) {
@@ -260,26 +255,20 @@ class _AdminArtistFormPageState extends ConsumerState<AdminArtistFormPage> {
                                             }
 
                                             if (!context.mounted) return;
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(
-                                                content: Text(
-                                                  widget.isEdit
-                                                      ? 'Artista atualizado com sucesso'
-                                                      : 'Artista criado com sucesso',
-                                                ),
-                                              ),
+                                            AppFeedback.success(
+                                              context,
+                                              widget.isEdit
+                                                  ? 'Artista atualizado com sucesso.'
+                                                  : 'Artista criado com sucesso.',
                                             );
                                             Navigator.of(context).pop();
                                           } catch (e) {
                                             if (!context.mounted) return;
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(
-                                                content: Text(
-                                                  widget.isEdit
-                                                      ? 'Erro ao editar artista: $e'
-                                                      : 'Erro ao criar artista: $e',
-                                                ),
-                                              ),
+                                            AppFeedback.error(
+                                              context,
+                                              widget.isEdit
+                                                  ? 'Não foi possível editar artista: $e'
+                                                  : 'Não foi possível criar artista: $e',
                                             );
                                           } finally {
                                             if (mounted) {

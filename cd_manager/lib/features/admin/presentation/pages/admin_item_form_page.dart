@@ -9,6 +9,7 @@ import '../../../../features/profile/application/profile_providers.dart';
 import '../../../../shared/models/album_detail_view.dart';
 import '../../../../shared/models/artist.dart';
 import '../../../../shared/models/item_type.dart';
+import '../../../../shared/widgets/app_feedback.dart';
 
 class AdminItemFormPage extends ConsumerStatefulWidget {
   const AdminItemFormPage.create({
@@ -283,17 +284,15 @@ class _AdminItemFormPageState extends ConsumerState<AdminItemFormPage> {
                                           _coverUrlController.text = url;
                                         });
                                         if (!context.mounted) return;
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text('Capa carregada com sucesso'),
-                                          ),
+                                        AppFeedback.success(
+                                          context,
+                                          'Capa carregada com sucesso.',
                                         );
                                       } catch (e) {
                                         if (!context.mounted) return;
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text('Erro ao carregar capa: $e'),
-                                          ),
+                                        AppFeedback.error(
+                                          context,
+                                          'Não foi possível carregar a capa: $e',
                                         );
                                       } finally {
                                         if (mounted) {
@@ -365,20 +364,18 @@ class _AdminItemFormPageState extends ConsumerState<AdminItemFormPage> {
                                           }
 
                                           if (!context.mounted) return;
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                widget.isEdit
-                                                    ? 'Item atualizado com sucesso'
-                                                    : 'Item criado com sucesso',
-                                              ),
-                                            ),
+                                          AppFeedback.success(
+                                            context,
+                                            widget.isEdit
+                                                ? 'Item atualizado com sucesso.'
+                                                : 'Item criado com sucesso.',
                                           );
                                           Navigator.of(context).pop();
                                         } catch (e) {
                                           if (!context.mounted) return;
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            SnackBar(content: Text('Erro ao guardar item: $e')),
+                                          AppFeedback.error(
+                                            context,
+                                            'Não foi possível guardar o item: $e',
                                           );
                                         } finally {
                                           if (mounted) {

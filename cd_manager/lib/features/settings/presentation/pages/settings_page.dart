@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/widgets/app_error_state.dart';
+import '../../../../shared/widgets/app_feedback.dart';
 import '../../../../shared/widgets/app_section_card.dart';
 import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../application/settings_providers.dart';
@@ -65,11 +66,18 @@ class SettingsPage extends ConsumerWidget {
                     ),
                   ],
                   selected: {themeMode},
-                  onSelectionChanged: (selection) {
+                  onSelectionChanged: (selection) async {
                     final selectedMode = selection.first;
-                    ref
+                    await ref
                         .read(themeModeControllerProvider.notifier)
                         .setThemeMode(selectedMode);
+                    if (!context.mounted) return;
+                    final label = switch (selectedMode) {
+                      ThemeMode.system => 'sistema',
+                      ThemeMode.light => 'claro',
+                      ThemeMode.dark => 'escuro',
+                    };
+                    AppFeedback.info(context, 'Tema atualizado para $label.');
                   },
                 ),
               ),

@@ -22,7 +22,22 @@ class FavoriteButton extends StatelessWidget {
               height: 16,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
+          : AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              transitionBuilder: (child, animation) {
+                return ScaleTransition(
+                  scale: CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutBack,
+                  ),
+                  child: FadeTransition(opacity: animation, child: child),
+                );
+              },
+              child: Icon(
+                isFavorite ? Icons.favorite : Icons.favorite_border,
+                key: ValueKey<bool>(isFavorite),
+              ),
+            ),
       label: Text(isFavorite ? 'Favorito' : 'Favoritos'),
     );
   }

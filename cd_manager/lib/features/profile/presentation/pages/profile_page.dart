@@ -6,6 +6,7 @@ import '../../../../shared/widgets/app_section_card.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/models/album_list_item.dart';
 import '../../../../shared/widgets/app_error_state.dart';
+import '../../../../shared/widgets/app_feedback.dart';
 import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../../auth/application/auth_providers.dart';
 import '../../../../shared/models/item_type.dart';
@@ -120,17 +121,15 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                   _avatarUrlController.text = url;
 
                                   if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Avatar atualizado com sucesso'),
-                                    ),
+                                  AppFeedback.success(
+                                    context,
+                                    'Avatar atualizado com sucesso.',
                                   );
                                 } catch (e) {
                                   if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Erro ao carregar avatar: $e'),
-                                    ),
+                                  AppFeedback.error(
+                                    context,
+                                    'Não foi possível carregar avatar: $e',
                                   );
                                 } finally {
                                   if (mounted) {
@@ -253,25 +252,15 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                         );
 
                                     if (!context.mounted) return;
-                                    ScaffoldMessenger.of(
+                                    AppFeedback.success(
                                       context,
-                                    ).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Perfil atualizado com sucesso',
-                                        ),
-                                      ),
+                                      'Perfil atualizado com sucesso.',
                                     );
                                   } catch (e) {
                                     if (!context.mounted) return;
-                                    ScaffoldMessenger.of(
+                                    AppFeedback.error(
                                       context,
-                                    ).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'Erro ao atualizar perfil: $e',
-                                        ),
-                                      ),
+                                      'Não foi possível atualizar perfil: $e',
                                     );
                                   }
                                 },

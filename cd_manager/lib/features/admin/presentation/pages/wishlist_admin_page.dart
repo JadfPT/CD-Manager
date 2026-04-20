@@ -10,6 +10,7 @@ import '../../../../shared/models/item_type.dart';
 import '../../../../shared/models/wishlist_item.dart';
 import '../../../../shared/widgets/app_empty_state.dart';
 import '../../../../shared/widgets/app_error_state.dart';
+import '../../../../shared/widgets/app_feedback.dart';
 
 class WishlistAdminPage extends ConsumerStatefulWidget {
   const WishlistAdminPage({super.key});
@@ -120,14 +121,10 @@ class _WishlistAdminPageState extends ConsumerState<WishlistAdminPage> {
       ref.invalidate(albumsProvider);
       ref.invalidate(visibleAlbumsProvider);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(successMessage)),
-      );
+      AppFeedback.success(context, '$successMessage.');
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro: $e')),
-      );
+      AppFeedback.error(context, 'Não foi possível concluir a ação: $e');
     } finally {
       if (mounted) {
         setState(() {
