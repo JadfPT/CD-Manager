@@ -2,12 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/widgets/app_error_state.dart';
 import '../../../../shared/widgets/app_feedback.dart';
-import '../../../../shared/widgets/app_section_card.dart';
 import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../application/settings_providers.dart';
+import '../widgets/settings_section.dart';
+import '../widgets/theme_mode_selector.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
+
+  Future<void> _onThemeModeChanged(
+    BuildContext context,
+    WidgetRef ref,
+    ThemeMode selectedMode,
+  ) async {
+    try {
+      await ref.read(themeModeControllerProvider.notifier).setThemeMode(selectedMode);
+      if (!context.mounted) return;
+      final label = switch (selectedMode) {
+        ThemeMode.system => 'sistema',
+        ThemeMode.light => 'claro',
+        ThemeMode.dark => 'escuro',
+      };
+      AppFeedback.info(context, 'Tema atualizado para $label.');
+    } catch (error) {
+      if (!context.mounted) return;
+      AppFeedback.error(context, 'Não foi possível atualizar tema: $error');
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -44,41 +65,24 @@ class SettingsPage extends ConsumerWidget {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              AppSectionCard(
+              SettingsSection(
+                title: 'Preferências da app',
+                subtitle: 'As definições aqui afetam o comportamento visual da aplicação.',
+                child: Text(
+                  'O perfil é usado para identidade da conta. Esta página é dedicada apenas à experiência da app.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SettingsSection(
                 title: 'Aparência',
-                subtitle: 'Escolhe como o tema é aplicado na aplicação.',
-                child: SegmentedButton<ThemeMode>(
-                  segments: const [
-                    ButtonSegment<ThemeMode>(
-                      value: ThemeMode.system,
-                      icon: Icon(Icons.settings_suggest_outlined),
-                      label: Text('Sistema'),
-                    ),
-                    ButtonSegment<ThemeMode>(
-                      value: ThemeMode.light,
-                      icon: Icon(Icons.light_mode_outlined),
-                      label: Text('Claro'),
-                    ),
-                    ButtonSegment<ThemeMode>(
-                      value: ThemeMode.dark,
-                      icon: Icon(Icons.dark_mode_outlined),
-                      label: Text('Escuro'),
-                    ),
-                  ],
-                  selected: {themeMode},
-                  onSelectionChanged: (selection) async {
-                    final selectedMode = selection.first;
-                    await ref
-                        .read(themeModeControllerProvider.notifier)
-                        .setThemeMode(selectedMode);
-                    if (!context.mounted) return;
-                    final label = switch (selectedMode) {
-                      ThemeMode.system => 'sistema',
-                      ThemeMode.light => 'claro',
-                      ThemeMode.dark => 'escuro',
-                    };
-                    AppFeedback.info(context, 'Tema atualizado para $label.');
-                  },
+                subtitle: 'Escolhe entre modo do sistema, claro ou escuro.',
+                child: ThemeModeSelector(
+                  themeMode: themeMode,
+                  onChanged: (selectedMode) =>
+                      _onThemeModeChanged(context, ref, selectedMode),
                 ),
               ),
             ],

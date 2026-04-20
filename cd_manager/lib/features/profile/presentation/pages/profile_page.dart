@@ -2,16 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../../../shared/widgets/app_section_card.dart';
-import '../../../../shared/widgets/app_empty_state.dart';
-import '../../../../shared/models/album_list_item.dart';
 import '../../../../shared/widgets/app_error_state.dart';
 import '../../../../shared/widgets/app_feedback.dart';
 import '../../../../shared/widgets/loading_skeleton.dart';
 import '../../../auth/application/auth_providers.dart';
-import '../../../../shared/models/item_type.dart';
 import '../../application/profile_providers.dart';
 import '../../application/profile_update_controller.dart';
+import '../widgets/profile_edit_section.dart';
+import '../widgets/profile_header_card.dart';
+import '../widgets/recent_items_section.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -36,6 +35,67 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     _displayNameController.dispose();
     _avatarUrlController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickAvatar() async {
+    final picked = await _imagePicker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1200,
+      imageQuality: 85,
+    );
+
+    if (picked == null) return;
+
+    try {
+      setState(() {
+        _isUploadingAvatar = true;
+      });
+
+      final bytes = await picked.readAsBytes();
+      final nameParts = picked.name.split('.');
+      final extension = nameParts.length > 1 ? nameParts.last : 'jpg';
+
+      final url = await ref.read(profileActionsProvider).uploadAvatar(
+            fileBytes: bytes,
+            fileExtension: extension,
+          );
+
+      if (!mounted) return;
+      setState(() {
+        _avatarUrlController.text = url;
+      });
+      AppFeedback.success(context, 'Avatar atualizado com sucesso.');
+    } catch (e) {
+      if (!mounted) return;
+      AppFeedback.error(context, 'Não foi possível carregar avatar: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploadingAvatar = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _saveProfile() async {
+    if (!_formKey.currentState!.validate()) {
+      AppFeedback.info(context, 'Revê os campos destacados antes de guardar.');
+      return;
+    }
+
+    try {
+      await ref.read(profileUpdateControllerProvider.notifier).save(
+            username: _usernameController.text.trim(),
+            displayName: _displayNameController.text.trim(),
+            avatarUrl: _avatarUrlController.text.trim(),
+          );
+
+      if (!mounted) return;
+      AppFeedback.success(context, 'Perfil atualizado com sucesso.');
+    } catch (e) {
+      if (!mounted) return;
+      AppFeedback.error(context, 'Não foi possível atualizar perfil: $e');
+    }
   }
 
   @override
@@ -81,204 +141,26 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              AppSectionCard(
-                title: 'Identidade',
-                subtitle: 'Dados públicos da tua conta',
-                child: Column(
-                  children: [
-                      _AvatarPreview(avatarUrl: avatarSource),
-                      const SizedBox(height: 8),
-                      OutlinedButton.icon(
-                        onPressed: _isUploadingAvatar
-                            ? null
-                            : () async {
-                                final picked = await _imagePicker.pickImage(
-                                  source: ImageSource.gallery,
-                                  maxWidth: 1200,
-                                  imageQuality: 85,
-                                );
-
-                                if (picked == null) return;
-
-                                try {
-                                  setState(() {
-                                    _isUploadingAvatar = true;
-                                  });
-
-                                  final bytes = await picked.readAsBytes();
-                                  final nameParts = picked.name.split('.');
-                                  final extension = nameParts.length > 1
-                                      ? nameParts.last
-                                      : 'jpg';
-
-                                  final url = await ref
-                                      .read(profileActionsProvider)
-                                      .uploadAvatar(
-                                        fileBytes: bytes,
-                                        fileExtension: extension,
-                                      );
-
-                                  _avatarUrlController.text = url;
-
-                                  if (!context.mounted) return;
-                                  AppFeedback.success(
-                                    context,
-                                    'Avatar atualizado com sucesso.',
-                                  );
-                                } catch (e) {
-                                  if (!context.mounted) return;
-                                  AppFeedback.error(
-                                    context,
-                                    'Não foi possível carregar avatar: $e',
-                                  );
-                                } finally {
-                                  if (mounted) {
-                                    setState(() {
-                                      _isUploadingAvatar = false;
-                                    });
-                                  }
-                                }
-                              },
-                        icon: _isUploadingAvatar
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.photo_camera_outlined),
-                        label: const Text('Carregar avatar'),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        profile?.displayName?.trim().isNotEmpty == true
-                            ? profile!.displayName!
-                            : 'Sem nome de apresentação',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        profile?.username?.trim().isNotEmpty == true
-                            ? '@${profile!.username!}'
-                            : '@sem-username',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        email ?? 'Email não disponível',
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                      const SizedBox(height: 10),
-                      _AdminBadge(isAdmin: profile?.isAdmin ?? false),
-                    ],
-                ),
+              ProfileHeaderCard(
+                avatarUrl: avatarSource,
+                displayName: profile?.displayName?.trim().isNotEmpty == true
+                    ? profile!.displayName!
+                    : 'Sem nome de apresentação',
+                username: profile?.username?.trim().isNotEmpty == true
+                    ? '@${profile!.username!}'
+                    : '@sem-username',
+                email: email ?? 'Email não disponível',
+                isAdmin: profile?.isAdmin ?? false,
+                isUploadingAvatar: _isUploadingAvatar,
+                onAvatarTap: _pickAvatar,
               ),
               const SizedBox(height: 12),
-              AppSectionCard(
-                title: 'Editar perfil',
-                subtitle: 'Username, nome de apresentação e avatar',
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                        TextFormField(
-                          controller: _usernameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Username',
-                            hintText: 'nome_utilizador',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.alternate_email),
-                          ),
-                          textInputAction: TextInputAction.next,
-                          validator: (value) {
-                            final text = value?.trim() ?? '';
-                            if (text.isEmpty) {
-                              return 'Indica um username';
-                            }
-                            if (text.length < 3) {
-                              return 'Mínimo de 3 caracteres';
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 12),
-                        TextFormField(
-                          controller: _displayNameController,
-                          decoration: const InputDecoration(
-                            labelText: 'Display name',
-                            hintText: 'Nome visível',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.person_outline),
-                          ),
-                          textInputAction: TextInputAction.next,
-                          validator: (value) {
-                            final text = value?.trim() ?? '';
-                            if (text.isEmpty) {
-                              return 'Indica um nome de apresentação';
-                            }
-                            return null;
-                          },
-                        ),
-                      const SizedBox(height: 14),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: updateState.isLoading
-                              ? null
-                              : () async {
-                                  if (!_formKey.currentState!.validate()) {
-                                    return;
-                                  }
-
-                                  try {
-                                    await ref
-                                        .read(
-                                          profileUpdateControllerProvider
-                                              .notifier,
-                                        )
-                                        .save(
-                                          username: _usernameController.text
-                                              .trim(),
-                                          displayName: _displayNameController
-                                              .text
-                                              .trim(),
-                                          avatarUrl: _avatarUrlController.text
-                                              .trim(),
-                                        );
-
-                                    if (!context.mounted) return;
-                                    AppFeedback.success(
-                                      context,
-                                      'Perfil atualizado com sucesso.',
-                                    );
-                                  } catch (e) {
-                                    if (!context.mounted) return;
-                                    AppFeedback.error(
-                                      context,
-                                      'Não foi possível atualizar perfil: $e',
-                                    );
-                                  }
-                                },
-                          icon: updateState.isLoading
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.save_outlined),
-                          label: const Text('Guardar alterações'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              ProfileEditSection(
+                formKey: _formKey,
+                usernameController: _usernameController,
+                displayNameController: _displayNameController,
+                isSaving: updateState.isLoading,
+                onSave: _saveProfile,
               ),
               const SizedBox(height: 12),
               statsAsync.when(
@@ -307,7 +189,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   message: error.toString(),
                   onRetry: () => ref.invalidate(profileLibraryStatsProvider),
                 ),
-                data: (stats) => _StatsGrid(stats: stats),
+                data: (stats) => ProfileStatsGrid(stats: stats),
               ),
               const SizedBox(height: 12),
               recentItemsAsync.when(
@@ -332,7 +214,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   message: error.toString(),
                   onRetry: () => ref.invalidate(recentAddedItemsProvider),
                 ),
-                data: (items) => _RecentItemsCard(items: items),
+                data: (items) => RecentItemsSection(items: items),
               ),
               const SizedBox(height: 12),
               if (profile?.isAdmin ?? false) ...[
@@ -363,25 +245,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           );
         },
       ),
-    );
-  }
-}
-
-class _StatsGrid extends StatelessWidget {
-  const _StatsGrid({required this.stats});
-
-  final ProfileLibraryStats stats;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(child: _StatCard(label: 'CDs', value: stats.cdCount.toString(), icon: Icons.album_outlined)),
-        const SizedBox(width: 10),
-        Expanded(child: _StatCard(label: 'Vinis', value: stats.vinylCount.toString(), icon: Icons.album)),
-        const SizedBox(width: 10),
-        Expanded(child: _StatCard(label: 'Favoritos', value: stats.favoriteArtistsCount.toString(), icon: Icons.star_outline)),
-      ],
     );
   }
 }
@@ -428,171 +291,6 @@ class _ProfilePageSkeleton extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          children: [
-            Icon(icon, color: colors.primary),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RecentItemsCard extends StatelessWidget {
-  const _RecentItemsCard({required this.items});
-
-  final List<AlbumListItem> items;
-
-  @override
-  Widget build(BuildContext context) {
-    if (items.isEmpty) {
-      return const AppEmptyState(
-        title: 'Sem itens recentes',
-        subtitle: 'Adiciona CDs ou vinis para ver aqui os últimos registos.',
-        icon: Icons.history,
-      );
-    }
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Últimos adicionados',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 10),
-            ListView.separated(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: items.length,
-              separatorBuilder: (context, index) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final item = items[index];
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: item.coverUrl != null && item.coverUrl!.trim().isNotEmpty
-                        ? Image.network(
-                            item.coverUrl!,
-                            width: 44,
-                            height: 44,
-                            fit: BoxFit.cover,
-                          )
-                        : Container(
-                            width: 44,
-                            height: 44,
-                            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                            child: const Icon(Icons.album, size: 20),
-                          ),
-                  ),
-                  title: Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: Text(
-                    '${item.artistName} • ${item.itemType == ItemType.cd ? 'CD' : 'Vinil'}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AvatarPreview extends StatelessWidget {
-  const _AvatarPreview({required this.avatarUrl});
-
-  final String? avatarUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    final hasUrl = avatarUrl != null && avatarUrl!.trim().isNotEmpty;
-
-    return CircleAvatar(
-      radius: 42,
-      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-      foregroundImage: hasUrl ? NetworkImage(avatarUrl!) : null,
-      child: hasUrl
-          ? null
-          : Icon(
-              Icons.person,
-              size: 36,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-    );
-  }
-}
-
-class _AdminBadge extends StatelessWidget {
-  const _AdminBadge({required this.isAdmin});
-
-  final bool isAdmin;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
-    final background = isAdmin
-        ? colors.primaryContainer.withValues(alpha: 0.8)
-        : colors.surfaceContainerHighest;
-    final foreground = isAdmin
-        ? colors.onPrimaryContainer
-        : colors.onSurfaceVariant;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        isAdmin ? 'Administrador' : 'Utilizador',
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: foreground,
-          fontWeight: FontWeight.w700,
-        ),
       ),
     );
   }

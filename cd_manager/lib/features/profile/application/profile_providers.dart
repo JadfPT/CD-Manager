@@ -12,12 +12,20 @@ class ProfileLibraryStats {
   const ProfileLibraryStats({
     required this.cdCount,
     required this.vinylCount,
+    required this.totalItemsCount,
+    required this.favoriteItemsCount,
     required this.favoriteArtistsCount,
+    required this.wishlistCount,
+    required this.offShelfCount,
   });
 
   final int cdCount;
   final int vinylCount;
+  final int totalItemsCount;
+  final int favoriteItemsCount;
   final int favoriteArtistsCount;
+  final int wishlistCount;
+  final int offShelfCount;
 }
 
 final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
@@ -44,12 +52,22 @@ final currentProfileProvider = FutureProvider<Profile?>((ref) async {
 
 final profileLibraryStatsProvider = FutureProvider<ProfileLibraryStats>((ref) async {
   final items = await ref.watch(albumListItemsProvider(const AlbumFilters()).future);
+  final favoriteItems = await ref.watch(favoriteItemsProvider.future);
   final favoriteArtists = await ref.watch(favoriteArtistsProvider.future);
+  final wishlist = await ref.watch(wishlistProvider.future);
+
+  final cdCount = items.where((item) => item.itemType == ItemType.cd).length;
+  final vinylCount = items.where((item) => item.itemType == ItemType.vinyl).length;
+  final offShelfCount = items.where((item) => !item.onShelf).length;
 
   return ProfileLibraryStats(
-    cdCount: items.where((item) => item.itemType == ItemType.cd).length,
-    vinylCount: items.where((item) => item.itemType == ItemType.vinyl).length,
+    cdCount: cdCount,
+    vinylCount: vinylCount,
+    totalItemsCount: items.length,
+    favoriteItemsCount: favoriteItems.length,
     favoriteArtistsCount: favoriteArtists.length,
+    wishlistCount: wishlist.length,
+    offShelfCount: offShelfCount,
   );
 });
 
