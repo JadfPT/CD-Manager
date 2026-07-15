@@ -1,0 +1,12 @@
+create table public.cover_suggestions (
+  id bigint generated always as identity primary key,
+  item_type text not null check (item_type in ('cd', 'vinyl')),
+  item_id bigint not null,
+  source text not null,
+  source_id text,
+  image_url text not null,
+  confidence numeric not null default 0,
+  status text not null default 'pending'
+    check (status in ('pending', 'approved', 'rejected', 'applied')),
+  created_at timestamptz not null default timezone('utc', now())
+);

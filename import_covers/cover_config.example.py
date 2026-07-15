@@ -1,0 +1,23 @@
+SUPABASE_URL = "https://SEU_PROJECT_REF.supabase.co"
+SUPABASE_SERVICE_ROLE_KEY = "SUA_SERVICE_ROLE_KEY"
+
+COVERS_BUCKET = "covers"
+
+MUSICBRAINZ_USER_AGENT = "CDManager/0.1 (your-email@example.com)"
+
+AUTO_APPLY_MIN_CONFIDENCE = 0.90
+SAVE_SUGGESTIONS_MIN_CONFIDENCE = 0.55
+
+METADATA_LIMIT = 25
+
+SKIP_COMPILATIONS_FOR_AUTO_APPLY = True
+
+LOW_CONFIDENCE_ARTIST_NAMES = {
+    "vários",
+    "varios",
+    "various",
+    "various artists",
+}
+
+PROCESS_CDS = True
+PROCESS_VINYL = False

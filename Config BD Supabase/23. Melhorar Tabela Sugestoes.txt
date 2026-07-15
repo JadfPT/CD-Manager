@@ -1,0 +1,46 @@
+alter table public.cover_suggestions
+add column if not exists local_storage_path text,
+add column if not exists local_public_url text,
+add column if not exists release_title text,
+add column if not exists artist_name text,
+add column if not exists matched_track_count integer,
+add column if not exists source_url text;
+
+
+---------------------------------------------------------------------------------------
+
+create table if not exists public.track_suggestions (
+  id bigint generated always as identity primary key,
+  item_type text not null check (item_type in ('cd', 'vinyl')),
+  item_id bigint not null,
+  source text not null,
+  source_id text,
+  confidence numeric not null default 0,
+  tracks jsonb not null,
+  status text not null default 'pending'
+    check (status in ('pending', 'approved', 'rejected', 'applied')),
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+alter table public.track_suggestions enable row level security;
+
+create policy "track_suggestions_select_admin"
+on public.track_suggestions
+for select
+to authenticated
+using (public.current_user_is_admin());
+
+create policy "track_suggestions_insert_admin"
+on public.track_suggestions
+for insert
+to authenticated
+with check (public.current_user_is_admin());
+
+create policy "track_suggestions_update_admin"
+on public.track_suggestions
+for update
+to authenticated
+using (public.current_user_is_admin())
+with check (public.current_user_is_admin());
+
+grant select, insert, update on public.track_suggestions to authenticated;

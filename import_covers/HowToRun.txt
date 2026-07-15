@@ -1,0 +1,28 @@
+1. Criar venv:
+python -m venv .venv
+
+2. Ativar venv:
+.venv\Scripts\activate
+
+3. Instalar deps:
+pip install -r requirements.txt
+
+4. Copiar config:
+copy cover_config.example.py cover_config.py
+
+5. Preencher cover_config.py:
+- SUPABASE_URL
+- SUPABASE_SERVICE_ROLE_KEY
+- MUSICBRAINZ_USER_AGENT
+
+6. Testar dry-run:
+python fetch_metadata_covers.py --limit 10
+
+7. Gravar sugestões sem aplicar:
+python fetch_metadata_covers.py --apply --limit 25
+
+8. Aplicar só alta confiança:
+python fetch_metadata_covers.py --apply --apply-high-confidence --limit 50
+
+9. Aplicar em todos:
+python fetch_metadata_covers.py --apply --apply-high-confidence --limit 893

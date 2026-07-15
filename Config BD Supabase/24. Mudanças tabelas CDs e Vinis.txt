@@ -1,0 +1,11 @@
+alter table public.cd_albums
+add column if not exists metadata_source text,
+add column if not exists metadata_source_id text,
+add column if not exists cover_source text,
+add column if not exists cover_confidence numeric;
+
+alter table public.vinyl_albums
+add column if not exists metadata_source text,
+add column if not exists metadata_source_id text,
+add column if not exists cover_source text,
+add column if not exists cover_confidence numeric;

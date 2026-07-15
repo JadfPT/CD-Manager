@@ -1,0 +1,42 @@
+create table if not exists public.item_tracks (
+  id bigint generated always as identity primary key,
+  item_type text not null check (item_type in ('cd', 'vinyl')),
+  item_id bigint not null,
+  position integer not null,
+  disc_number integer not null default 1,
+  title text not null,
+  duration_ms integer,
+  source text,
+  source_id text,
+  created_at timestamptz not null default timezone('utc', now()),
+  unique (item_type, item_id, disc_number, position)
+);
+
+alter table public.item_tracks enable row level security;
+
+create policy "item_tracks_select_authenticated"
+on public.item_tracks
+for select
+to authenticated
+using (true);
+
+create policy "item_tracks_insert_admin"
+on public.item_tracks
+for insert
+to authenticated
+with check (public.current_user_is_admin());
+
+create policy "item_tracks_update_admin"
+on public.item_tracks
+for update
+to authenticated
+using (public.current_user_is_admin())
+with check (public.current_user_is_admin());
+
+create policy "item_tracks_delete_admin"
+on public.item_tracks
+for delete
+to authenticated
+using (public.current_user_is_admin());
+
+grant select, insert, update, delete on public.item_tracks to authenticated;
